@@ -16,6 +16,7 @@ export interface ClientToServerEvents {
 
 	'game:lockDice': (diceIndices: number[]) => void;
 	'game:roll': () => void;
+	'game:finishRolling': () => void;
 	'game:selectTarget': (dieIndex: number, targetPlayerId: string) => void;
 	'game:endTurn': () => void;
 

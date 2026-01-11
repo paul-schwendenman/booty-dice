@@ -129,6 +129,11 @@
 		selectingTargetFor = null;
 	}
 
+	function finishRolling() {
+		const socket = getSocket();
+		socket.emit('game:finishRolling');
+	}
+
 	function endTurn() {
 		const socket = getSocket();
 		socket.emit('game:endTurn');
@@ -149,8 +154,10 @@
 
 	let unresolvedActions = $derived(getUnresolvedActions());
 	let canRoll = $derived(myTurn && game && game.rollsRemaining > 0 && game.turnPhase === 'rolling');
-	let canEndTurn = $derived(myTurn && game && unresolvedActions.length === 0);
-	let needsTargetSelection = $derived(myTurn && unresolvedActions.length > 0);
+	let hasRolled = $derived(game && game.rollsRemaining < 3);
+	let canFinishRolling = $derived(myTurn && game && game.turnPhase === 'rolling' && hasRolled);
+	let needsTargetSelection = $derived(myTurn && game && game.turnPhase === 'selecting_targets' && unresolvedActions.length > 0);
+	let canEndTurn = $derived(myTurn && game && hasRolled && unresolvedActions.length === 0 && game.turnPhase !== 'rolling');
 </script>
 
 <main class="container">
@@ -186,6 +193,12 @@
 							</Button>
 						{/if}
 
+						{#if canFinishRolling}
+							<Button onclick={finishRolling} variant="secondary">
+								Resolve Dice
+							</Button>
+						{/if}
+
 						{#if needsTargetSelection}
 							<div class="target-prompt">
 								<p>Select targets for your attacks/steals:</p>
@@ -200,7 +213,7 @@
 							</div>
 						{/if}
 
-						{#if canEndTurn && game.rollsRemaining < 3}
+						{#if canEndTurn}
 							<Button onclick={endTurn}>End Turn</Button>
 						{/if}
 					</div>

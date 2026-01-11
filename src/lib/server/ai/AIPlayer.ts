@@ -4,6 +4,7 @@ import { AIStrategy } from './AIStrategy.js';
 interface AICallbacks {
 	onLockDice: (indices: number[]) => void;
 	onRoll: () => Promise<Die[]>;
+	onFinishRolling: () => void;
 	onSelectTarget: (dieIndex: number, targetId: string) => void;
 	onEndTurn: () => void;
 }
@@ -38,6 +39,9 @@ export class AIPlayer {
 			currentDice = await callbacks.onRoll();
 			rollsRemaining--;
 		}
+
+		// Finish rolling phase
+		callbacks.onFinishRolling();
 
 		// Target selection phase
 		await this.delay(this.thinkDelay);

@@ -115,6 +115,16 @@ export class GameEngine {
 		return this.state.pendingActions.some((a) => !a.resolved);
 	}
 
+	finishRolling(): void {
+		if (this.state.turnPhase !== 'rolling') return;
+
+		if (this.state.pendingActions.length > 0) {
+			this.state.turnPhase = 'selecting_targets';
+		} else {
+			this.state.turnPhase = 'resolving';
+		}
+	}
+
 	resolveTurn(): TurnResolution {
 		const currentPlayer = this.getCurrentPlayer();
 		const effects = this.actionResolver.resolve(

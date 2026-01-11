@@ -47,6 +47,17 @@ export function setupGameHandlers(
 		}
 	});
 
+	socket.on('game:finishRolling', () => {
+		const room = roomManager.getRoomByPlayer(socket.id);
+		if (!room?.gameEngine) return;
+
+		const state = room.gameEngine.getState();
+		if (state.players[state.currentPlayerIndex].id !== socket.id) return;
+
+		room.gameEngine.finishRolling();
+		io.to(room.code).emit('game:state', room.gameEngine.getState());
+	});
+
 	socket.on('game:selectTarget', (dieIndex, targetPlayerId) => {
 		const room = roomManager.getRoomByPlayer(socket.id);
 		if (!room?.gameEngine) return;
@@ -151,6 +162,10 @@ async function handleAITurn(
 			io.to(roomCode).emit('game:diceRolled', result.dice, result.combo);
 			io.to(roomCode).emit('game:state', gameEngine.getState());
 			return result.dice;
+		},
+		onFinishRolling: () => {
+			gameEngine.finishRolling();
+			io.to(roomCode).emit('game:state', gameEngine.getState());
 		},
 		onSelectTarget: (dieIndex, targetId) => {
 			gameEngine.selectTarget(dieIndex, targetId);
