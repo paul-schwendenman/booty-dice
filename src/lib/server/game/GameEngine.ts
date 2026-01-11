@@ -70,8 +70,8 @@ export class GameEngine {
 
 		const canRollAgain = this.state.rollsRemaining > 0;
 
-		// If there are targeted actions needed, switch to target selection
-		if (this.state.pendingActions.length > 0) {
+		// Only switch to target selection when out of rolls
+		if (this.state.pendingActions.length > 0 && !canRollAgain) {
 			this.state.turnPhase = 'selecting_targets';
 		}
 
