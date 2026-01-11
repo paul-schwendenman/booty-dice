@@ -16,7 +16,7 @@ export interface LogEntry {
 	timestamp: number;
 	playerId: string;
 	message: string;
-	type: 'roll' | 'action' | 'combo' | 'elimination' | 'win';
+	type: 'roll' | 'action' | 'combo' | 'elimination' | 'win' | 'summary';
 }
 
 export interface GameState {

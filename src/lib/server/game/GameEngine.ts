@@ -127,6 +127,7 @@ export class GameEngine {
 
 	resolveTurn(): TurnResolution {
 		const currentPlayer = this.getCurrentPlayer();
+		const rollsUsed = 3 - this.state.rollsRemaining;
 		const effects = this.actionResolver.resolve(
 			this.state.dice,
 			this.state.pendingActions,
@@ -180,6 +181,9 @@ export class GameEngine {
 				this.addLog(target.id, `${target.name} has been eliminated!`, 'elimination');
 			}
 		});
+
+		// Generate turn summary
+		this.addTurnSummary(currentPlayer, rollsUsed, effects);
 
 		// Check win conditions
 		const winner = this.checkWinCondition();
@@ -236,6 +240,50 @@ export class GameEngine {
 			message,
 			type
 		});
+	}
+
+	private addTurnSummary(player: Player, rollsUsed: number, effects: ResolvedEffect[]): void {
+		const summaryParts: string[] = [];
+
+		// Count rolls
+		summaryParts.push(`${rollsUsed} roll${rollsUsed !== 1 ? 's' : ''}`);
+
+		// Calculate net coins for the player
+		let coinsGained = 0;
+		let coinsLost = 0;
+		let damageDealt = 0;
+		let damageReceived = 0;
+		let shieldsGained = 0;
+		let livesLost = 0;
+
+		effects.forEach((effect) => {
+			if (effect.targetId === player.id) {
+				if (effect.type === 'coins_gained') coinsGained += effect.amount;
+				if (effect.type === 'coins_lost') coinsLost += effect.amount;
+				if (effect.type === 'shield_gained') shieldsGained += effect.amount;
+				if (effect.type === 'life_lost') livesLost += effect.amount;
+				if (effect.type === 'damage') damageReceived += effect.amount;
+			} else {
+				if (effect.type === 'damage' && effect.sourceId === player.id) damageDealt += effect.amount;
+				if (effect.type === 'life_lost' && effect.sourceId === player.id) damageDealt += effect.amount;
+			}
+		});
+
+		// Build summary parts
+		const netCoins = coinsGained - coinsLost;
+		if (netCoins > 0) summaryParts.push(`+${netCoins} coins`);
+		else if (netCoins < 0) summaryParts.push(`${netCoins} coins`);
+
+		if (damageDealt > 0) summaryParts.push(`dealt ${damageDealt} dmg`);
+		if (damageReceived > 0) summaryParts.push(`took ${damageReceived} dmg`);
+		if (livesLost > 0) summaryParts.push(`lost ${livesLost} life`);
+		if (shieldsGained > 0) summaryParts.push(`+${shieldsGained} shield`);
+
+		this.addLog(
+			player.id,
+			`Turn end: ${player.name} - ${summaryParts.join(', ')}`,
+			'summary'
+		);
 	}
 
 	private describeDice(dice: Die[]): string {

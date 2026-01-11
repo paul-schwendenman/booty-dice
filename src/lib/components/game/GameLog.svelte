@@ -78,4 +78,11 @@
 		color: #9d9;
 		font-weight: 600;
 	}
+
+	.entry-summary {
+		background: #1a2a3d;
+		color: #7aa8d4;
+		border-left: 3px solid #4a8cc4;
+		font-style: italic;
+	}
 </style>
