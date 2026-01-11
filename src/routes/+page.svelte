@@ -4,6 +4,8 @@
 	import { getSocket } from '$lib/socket/client.js';
 	import { lobbyStore } from '$lib/stores/lobbyStore.js';
 	import { playerStore } from '$lib/stores/playerStore.js';
+	import { gameStore } from '$lib/stores/gameStore.js';
+	import { loadSession } from '$lib/utils/session.js';
 	import Button from '$lib/components/ui/Button.svelte';
 
 	let playerName = $state('');
@@ -14,9 +16,26 @@
 	onMount(() => {
 		const socket = getSocket();
 
+		// Handle reconnection responses - navigate to the right place
+		socket.on('game:state', (state) => {
+			const session = loadSession();
+			if (session?.roomCode) {
+				gameStore.set(state);
+				goto(`/game/${session.roomCode}`);
+			}
+		});
+
+		socket.on('lobby:state', (players, canStart) => {
+			const session = loadSession();
+			if (session?.roomCode) {
+				lobbyStore.updatePlayers(players, canStart);
+				lobbyStore.setRoom(session.roomCode, players[0]?.id === socket.id);
+				goto(`/lobby/${session.roomCode}`);
+			}
+		});
+
 		socket.on('connect', () => {
 			isConnected = true;
-			playerStore.setId(socket.id ?? '');
 		});
 
 		socket.on('disconnect', () => {
@@ -25,12 +44,13 @@
 
 		if (socket.connected) {
 			isConnected = true;
-			playerStore.setId(socket.id ?? '');
 		}
 
 		return () => {
 			socket.off('connect');
 			socket.off('disconnect');
+			socket.off('game:state');
+			socket.off('lobby:state');
 		};
 	});
 
@@ -41,9 +61,9 @@
 		}
 
 		const socket = getSocket();
-		playerStore.setName(playerName);
 
 		socket.emit('lobby:create', playerName, (roomCode) => {
+			playerStore.setPlayer(socket.id ?? '', playerName, roomCode);
 			lobbyStore.setRoom(roomCode, true);
 			goto(`/lobby/${roomCode}`);
 		});
@@ -60,12 +80,13 @@
 		}
 
 		const socket = getSocket();
-		playerStore.setName(playerName);
+		const normalizedCode = joinCode.toUpperCase();
 
-		socket.emit('lobby:join', joinCode.toUpperCase(), playerName, (success, errorMsg) => {
+		socket.emit('lobby:join', normalizedCode, playerName, (success, errorMsg) => {
 			if (success) {
-				lobbyStore.setRoom(joinCode.toUpperCase(), false);
-				goto(`/lobby/${joinCode.toUpperCase()}`);
+				playerStore.setPlayer(socket.id ?? '', playerName, normalizedCode);
+				lobbyStore.setRoom(normalizedCode, false);
+				goto(`/lobby/${normalizedCode}`);
 			} else {
 				error = errorMsg || 'Failed to join room';
 			}

@@ -2,10 +2,11 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { getSocket } from '$lib/socket/client.js';
+	import { getSocket, attemptReconnect } from '$lib/socket/client.js';
 	import { lobbyStore, myLobbyPlayer } from '$lib/stores/lobbyStore.js';
 	import { playerStore } from '$lib/stores/playerStore.js';
 	import { gameStore } from '$lib/stores/gameStore.js';
+	import { loadSession } from '$lib/utils/session.js';
 	import Button from '$lib/components/ui/Button.svelte';
 	import PlayerCard from '$lib/components/game/PlayerCard.svelte';
 	import type { Player } from '$lib/types/index.js';
@@ -25,6 +26,15 @@
 
 		socket.on('lobby:state', (players: Player[], canStart: boolean) => {
 			lobbyStore.updatePlayers(players, canStart);
+			// Update player ID with new socket ID after reconnection
+			const session = loadSession();
+			if (session && socket.id) {
+				playerStore.setPlayer(socket.id, session.playerName, session.roomCode);
+				// Check if we're the host (first human player)
+				const humanPlayers = players.filter((p) => !p.isAI);
+				const isHost = humanPlayers.length > 0 && humanPlayers[0].id === socket.id;
+				lobbyStore.setRoom(session.roomCode, isHost);
+			}
 		});
 
 		socket.on('lobby:playerJoined', (newPlayer: Player) => {
@@ -43,6 +53,14 @@
 			gameStore.set(state);
 			goto(`/game/${roomCode}`);
 		});
+
+		// If we have a session but no players, try to reconnect
+		if (lobby.players.length === 0) {
+			const session = loadSession();
+			if (session?.roomCode === roomCode.toUpperCase() && session?.playerId) {
+				attemptReconnect();
+			}
+		}
 
 		return () => {
 			socket.off('lobby:state');

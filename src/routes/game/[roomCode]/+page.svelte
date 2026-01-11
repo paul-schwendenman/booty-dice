@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { getSocket } from '$lib/socket/client.js';
+	import { getSocket, attemptReconnect } from '$lib/socket/client.js';
 	import {
 		gameStore,
 		currentPlayer,
@@ -11,6 +11,7 @@
 		otherAlivePlayers
 	} from '$lib/stores/gameStore.js';
 	import { playerStore } from '$lib/stores/playerStore.js';
+	import { loadSession } from '$lib/utils/session.js';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import DiceBoard from '$lib/components/game/DiceBoard.svelte';
@@ -30,6 +31,7 @@
 	let showWinner = $state(false);
 	let winnerName = $state('');
 	let winReason = $state('');
+	let isReconnecting = $state(false);
 
 	// Target selection state
 	let selectingTargetFor = $state<PendingAction | null>(null);
@@ -47,7 +49,13 @@
 		const socket = getSocket();
 
 		socket.on('game:state', (state) => {
+			isReconnecting = false;
 			gameStore.set(state);
+			// Update player ID with new socket ID after reconnection
+			const session = loadSession();
+			if (session && socket.id) {
+				playerStore.setPlayer(socket.id, session.playerName, session.roomCode);
+			}
 		});
 
 		socket.on('game:diceRolled', (dice: Die[], combo: ComboType) => {
@@ -66,9 +74,21 @@
 			console.error('Game error:', message);
 		});
 
-		// If no game state, go back to lobby
+		// If no game state, try to reconnect or redirect
 		if (!game) {
-			goto(`/lobby/${roomCode}`);
+			const session = loadSession();
+			if (session?.roomCode === roomCode.toUpperCase() && session?.playerId) {
+				isReconnecting = true;
+				attemptReconnect();
+				// Give reconnection some time, then redirect if still no state
+				setTimeout(() => {
+					if (!$gameStore) {
+						goto(`/lobby/${roomCode}`);
+					}
+				}, 2000);
+			} else {
+				goto(`/lobby/${roomCode}`);
+			}
 		}
 
 		return () => {
@@ -134,7 +154,11 @@
 </script>
 
 <main class="container">
-	{#if game}
+	{#if isReconnecting}
+		<div class="reconnecting">
+			<p>Reconnecting to game...</p>
+		</div>
+	{:else if game}
 		<div class="game-header">
 			<div class="turn-info">
 				{#if current}
@@ -246,6 +270,15 @@
 		margin: 0 auto;
 		padding: 1rem;
 		min-height: 100vh;
+	}
+
+	.reconnecting {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 50vh;
+		color: #888;
+		font-style: italic;
 	}
 
 	.game-header {
