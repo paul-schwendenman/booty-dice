@@ -16,8 +16,31 @@
 	let myPlayer = $derived($myLobbyPlayer);
 	let player = $derived($playerStore);
 
+	// For joining from URL
+	let playerName = $state('');
+	let joinError = $state('');
+	let isConnected = $state(false);
+	let isJoining = $state(false);
+	let shareButtonText = $state('Share Link');
+
+	// Check if user needs to join (not in the room yet)
+	let needsToJoin = $derived(!myPlayer && lobby.players.length === 0 && !isJoining);
+
 	onMount(() => {
 		const socket = getSocket();
+
+		// Track connection state
+		if (socket.connected) {
+			isConnected = true;
+		}
+
+		socket.on('connect', () => {
+			isConnected = true;
+		});
+
+		socket.on('disconnect', () => {
+			isConnected = false;
+		});
 
 		// If we don't have a room code set, we need to redirect
 		if (!lobby.roomCode && roomCode) {
@@ -26,6 +49,7 @@
 
 		socket.on('lobby:state', (players: Player[], canStart: boolean) => {
 			lobbyStore.updatePlayers(players, canStart);
+			isJoining = false;
 			// Update player ID with new socket ID after reconnection
 			const session = loadSession();
 			if (session && socket.id) {
@@ -63,6 +87,8 @@
 		}
 
 		return () => {
+			socket.off('connect');
+			socket.off('disconnect');
 			socket.off('lobby:state');
 			socket.off('lobby:playerJoined');
 			socket.off('lobby:playerLeft');
@@ -70,6 +96,32 @@
 			socket.off('game:state');
 		};
 	});
+
+	function joinRoom() {
+		if (!playerName.trim()) {
+			joinError = 'Enter your pirate name!';
+			return;
+		}
+		if (!roomCode) {
+			joinError = 'Invalid room code';
+			return;
+		}
+
+		const socket = getSocket();
+		const normalizedCode = roomCode.toUpperCase();
+		isJoining = true;
+		joinError = '';
+
+		socket.emit('lobby:join', normalizedCode, playerName, (success, errorMsg) => {
+			if (success) {
+				playerStore.setPlayer(socket.id ?? '', playerName, normalizedCode);
+				lobbyStore.setRoom(normalizedCode, false);
+			} else {
+				isJoining = false;
+				joinError = errorMsg || 'Failed to join room';
+			}
+		});
+	}
 
 	function toggleReady() {
 		const socket = getSocket();
@@ -92,6 +144,15 @@
 		socket.emit('lobby:startGame');
 	}
 
+	function shareLink() {
+		const url = window.location.href;
+		navigator.clipboard.writeText(url);
+		shareButtonText = 'Copied!';
+		setTimeout(() => {
+			shareButtonText = 'Share Link';
+		}, 2000);
+	}
+
 	function copyRoomCode() {
 		if (roomCode) {
 			navigator.clipboard.writeText(roomCode);
@@ -101,7 +162,7 @@
 
 <main class="container">
 	<div class="header">
-		<h1>🏴‍☠️ Crew Assembly</h1>
+		<h1>🏴‍☠️ {needsToJoin ? 'Join Game' : 'Crew Assembly'}</h1>
 		<div class="room-code">
 			<span class="label">Room Code:</span>
 			<button class="code" onclick={copyRoomCode} title="Click to copy">
@@ -110,57 +171,92 @@
 		</div>
 	</div>
 
-	<div class="players-section">
-		<h2>Pirates ({lobby.players.length}/6)</h2>
-		<div class="players-list">
-			{#each lobby.players as lobbyPlayer (lobbyPlayer.id)}
-				<div class="player-row">
-					<div class="player-info">
-						<span class="name">{lobbyPlayer.name}</span>
-						{#if lobbyPlayer.isAI}
-							<span class="badge ai">AI</span>
-						{/if}
-						{#if lobbyPlayer.id === player.id}
-							<span class="badge you">You</span>
-						{/if}
-					</div>
-					<div class="player-status">
-						{#if lobbyPlayer.isReady || lobbyPlayer.isAI}
-							<span class="ready">Ready ✓</span>
-						{:else}
-							<span class="waiting">Waiting...</span>
-						{/if}
-						{#if lobby.isHost && lobbyPlayer.isAI}
-							<button class="remove-btn" onclick={() => removeAI(lobbyPlayer.id)}>✕</button>
-						{/if}
-					</div>
-				</div>
-			{/each}
+	{#if needsToJoin}
+		<!-- Join form for users visiting via shared link -->
+		<div class="join-section">
+			<p class="join-prompt">You've been invited to join a pirate crew!</p>
+
+			<input
+				type="text"
+				bind:value={playerName}
+				placeholder="Your Pirate Name"
+				maxlength="20"
+				class="input"
+				onkeydown={(e) => e.key === 'Enter' && joinRoom()}
+			/>
+
+			{#if joinError}
+				<p class="error">{joinError}</p>
+			{/if}
+
+			<Button onclick={joinRoom} disabled={!isConnected || isJoining}>
+				{isJoining ? 'Joining...' : 'Join Crew'}
+			</Button>
+
+			{#if !isConnected}
+				<p class="hint">Connecting to server...</p>
+			{/if}
 		</div>
-	</div>
-
-	<div class="actions">
-		{#if !myPlayer?.isAI}
-			<Button onclick={toggleReady} variant={myPlayer?.isReady ? 'secondary' : 'primary'}>
-				{myPlayer?.isReady ? 'Not Ready' : 'Ready Up!'}
+	{:else}
+		<!-- Share button -->
+		<div class="share-section">
+			<Button onclick={shareLink} variant="secondary">
+				{shareButtonText}
 			</Button>
+		</div>
+
+		<div class="players-section">
+			<h2>Pirates ({lobby.players.length}/6)</h2>
+			<div class="players-list">
+				{#each lobby.players as lobbyPlayer (lobbyPlayer.id)}
+					<div class="player-row">
+						<div class="player-info">
+							<span class="name">{lobbyPlayer.name}</span>
+							{#if lobbyPlayer.isAI}
+								<span class="badge ai">AI</span>
+							{/if}
+							{#if lobbyPlayer.id === player.id}
+								<span class="badge you">You</span>
+							{/if}
+						</div>
+						<div class="player-status">
+							{#if lobbyPlayer.isReady || lobbyPlayer.isAI}
+								<span class="ready">Ready ✓</span>
+							{:else}
+								<span class="waiting">Waiting...</span>
+							{/if}
+							{#if lobby.isHost && lobbyPlayer.isAI}
+								<button class="remove-btn" onclick={() => removeAI(lobbyPlayer.id)}>✕</button>
+							{/if}
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+
+		<div class="actions">
+			{#if !myPlayer?.isAI}
+				<Button onclick={toggleReady} variant={myPlayer?.isReady ? 'secondary' : 'primary'}>
+					{myPlayer?.isReady ? 'Not Ready' : 'Ready Up!'}
+				</Button>
+			{/if}
+
+			{#if lobby.isHost}
+				<Button onclick={addAI} variant="secondary" disabled={lobby.players.length >= 6}>
+					Add AI Pirate
+				</Button>
+
+				<Button onclick={startGame} disabled={!lobby.canStart}>
+					Start Game
+				</Button>
+			{/if}
+		</div>
+
+		{#if !lobby.canStart && lobby.players.length >= 2}
+			<p class="hint">Waiting for all pirates to ready up...</p>
+		{:else if lobby.players.length < 2}
+			<p class="hint">Need at least 2 pirates to start</p>
 		{/if}
-
-		{#if lobby.isHost}
-			<Button onclick={addAI} variant="secondary" disabled={lobby.players.length >= 6}>
-				Add AI Pirate
-			</Button>
-
-			<Button onclick={startGame} disabled={!lobby.canStart}>
-				Start Game
-			</Button>
-		{/if}
-	</div>
-
-	{#if !lobby.canStart && lobby.players.length >= 2}
-		<p class="hint">Waiting for all pirates to ready up...</p>
-	{:else if lobby.players.length < 2}
-		<p class="hint">Need at least 2 pirates to start</p>
 	{/if}
 </main>
 
@@ -308,5 +404,49 @@
 		color: #888;
 		margin-top: 1.5rem;
 		font-size: 0.9rem;
+	}
+
+	.join-section {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+		margin-top: 1rem;
+	}
+
+	.join-prompt {
+		text-align: center;
+		color: #ccc;
+		font-size: 1.1rem;
+		margin-bottom: 0.5rem;
+	}
+
+	.input {
+		width: 100%;
+		padding: 1rem;
+		border: 2px solid #333;
+		border-radius: 8px;
+		background: #2a2a2a;
+		color: #eee;
+		font-size: 1rem;
+		box-sizing: border-box;
+	}
+
+	.input:focus {
+		outline: none;
+		border-color: #d4a574;
+	}
+
+	.input::placeholder {
+		color: #666;
+	}
+
+	.error {
+		color: #e77;
+		text-align: center;
+		font-size: 0.9rem;
+	}
+
+	.share-section {
+		margin-bottom: 1.5rem;
 	}
 </style>
