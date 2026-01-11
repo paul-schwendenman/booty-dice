@@ -138,7 +138,7 @@ For each **additional X Marks the Spot**, pirates give **1 additional Doubloon**
 
 ---
 
-### ❌ ☠️ 🌊 ⚔️ 🛡 BLACKBEARD’S CURSE
+### 🪙 ❌ ☠️ 🌊 ⚔️ 🛡 BLACKBEARD'S CURSE (All 6 Faces)
 
 Argghhh! All other pirates:
 

@@ -116,7 +116,7 @@
 						</div>
 						<div class="combo-item">
 							<strong>☠️ Blackbeard's Curse</strong>
-							<p>All 5 different faces - Devastating combo!</p>
+							<p>All 6 different faces - All enemies lose 2 lives and 5 doubloons!</p>
 						</div>
 					</div>
 				</section>

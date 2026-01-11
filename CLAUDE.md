@@ -58,7 +58,7 @@ src/
 - Win by: reaching 25 doubloons OR being the last pirate alive
 - On your turn: roll up to 3 times, locking dice between rolls
 - 6 dice faces: Doubloon (+2 coins), X Marks Spot (-2 coins), Jolly Roger (steal 2), Cutlass (attack), Walk Plank (lose 1 life), Shield (+1 shield)
-- Combos: Mutiny (3+ planks), Shipwreck (3+ X's), Blackbeard's Curse (specific 5-dice combo)
+- Combos: Mutiny (3+ planks), Shipwreck (3+ X's), Blackbeard's Curse (all 6 different faces)
 - Captain's Plunder: if you eliminate someone, you get all their doubloons
 
 ## Key Patterns

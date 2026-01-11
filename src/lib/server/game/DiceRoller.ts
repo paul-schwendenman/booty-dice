@@ -30,16 +30,9 @@ export class DiceRoller {
 	private detectCombo(dice: Die[]): ComboType {
 		const faces = dice.map((d) => d.face);
 
-		// Blackbeard's Curse: must have all 5 specific faces
-		const curseRequired: DiceFace[] = [
-			'x_marks_spot',
-			'jolly_roger',
-			'walk_plank',
-			'cutlass',
-			'shield'
-		];
-		const hasCurse = curseRequired.every((required) => faces.includes(required));
-		if (hasCurse) return 'blackbeards_curse';
+		// Blackbeard's Curse: must have all 6 different faces (one of each)
+		const uniqueFaces = new Set(faces);
+		if (uniqueFaces.size === 6) return 'blackbeards_curse';
 
 		// Mutiny: 3+ Walk the Planks
 		const plankCount = faces.filter((f) => f === 'walk_plank').length;

@@ -148,14 +148,9 @@ export class ActionResolver {
 	}
 
 	private detectCombo(faces: DiceFace[]): ComboType {
-		const curseRequired: DiceFace[] = [
-			'x_marks_spot',
-			'jolly_roger',
-			'walk_plank',
-			'cutlass',
-			'shield'
-		];
-		if (curseRequired.every((r) => faces.includes(r))) return 'blackbeards_curse';
+		// Blackbeard's Curse: all 6 different faces (one of each)
+		const uniqueFaces = new Set(faces);
+		if (uniqueFaces.size === 6) return 'blackbeards_curse';
 		if (faces.filter((f) => f === 'walk_plank').length >= 3) return 'mutiny';
 		if (faces.filter((f) => f === 'x_marks_spot').length >= 3) return 'shipwreck';
 		return null;
