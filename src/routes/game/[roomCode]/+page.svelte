@@ -14,6 +14,7 @@
 	import { loadSession } from '$lib/utils/session.js';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import RulesDrawer from '$lib/components/ui/RulesDrawer.svelte';
 	import DiceBoard from '$lib/components/game/DiceBoard.svelte';
 	import PlayerCard from '$lib/components/game/PlayerCard.svelte';
 	import GameLog from '$lib/components/game/GameLog.svelte';
@@ -32,6 +33,7 @@
 	let winnerName = $state('');
 	let winReason = $state('');
 	let isReconnecting = $state(false);
+	let showRules = $state(false);
 
 	// Target selection state
 	let selectingTargetFor = $state<PendingAction | null>(null);
@@ -167,6 +169,7 @@
 		</div>
 	{:else if game}
 		<div class="game-header">
+			<div class="header-spacer"></div>
 			<div class="turn-info">
 				{#if current}
 					<span class="turn-label">
@@ -175,6 +178,9 @@
 					<span class="rolls-left">Rolls left: {game.rollsRemaining}</span>
 				{/if}
 			</div>
+			<button class="rules-btn" onclick={() => showRules = true} aria-label="Show rules">
+				?
+			</button>
 		</div>
 
 		<div class="game-layout">
@@ -275,6 +281,8 @@
 			<Button onclick={backToLobby}>Back to Home</Button>
 		</div>
 	</Modal>
+
+	<RulesDrawer open={showRules} onclose={() => showRules = false} />
 </main>
 
 <style>
@@ -295,14 +303,42 @@
 	}
 
 	.game-header {
-		text-align: center;
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
 		margin-bottom: 1.5rem;
+	}
+
+	.header-spacer {
+		width: 36px;
+		flex-shrink: 0;
 	}
 
 	.turn-info {
 		display: flex;
 		flex-direction: column;
 		gap: 0.25rem;
+		flex: 1;
+		text-align: center;
+	}
+
+	.rules-btn {
+		width: 36px;
+		height: 36px;
+		border-radius: 50%;
+		background: #333;
+		border: 2px solid #444;
+		color: #d4a574;
+		font-size: 1.25rem;
+		font-weight: bold;
+		cursor: pointer;
+		transition: all 0.2s;
+		flex-shrink: 0;
+	}
+
+	.rules-btn:hover {
+		background: #3a3a3a;
+		border-color: #d4a574;
 	}
 
 	.turn-label {
