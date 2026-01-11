@@ -48,14 +48,22 @@ export function setupGameHandlers(
 	});
 
 	socket.on('game:finishRolling', () => {
+		console.log('[game:finishRolling] called by', socket.id);
 		const room = roomManager.getRoomByPlayer(socket.id);
-		if (!room?.gameEngine) return;
+		if (!room?.gameEngine) {
+			console.log('[game:finishRolling] no room/gameEngine');
+			return;
+		}
 
 		const state = room.gameEngine.getState();
+		console.log('[game:finishRolling] current player:', state.players[state.currentPlayerIndex].id, 'socket:', socket.id);
 		if (state.players[state.currentPlayerIndex].id !== socket.id) return;
 
+		console.log('[game:finishRolling] before:', state.turnPhase, 'pendingActions:', state.pendingActions.length);
 		room.gameEngine.finishRolling();
-		io.to(room.code).emit('game:state', room.gameEngine.getState());
+		const newState = room.gameEngine.getState();
+		console.log('[game:finishRolling] after:', newState.turnPhase);
+		io.to(room.code).emit('game:state', newState);
 	});
 
 	socket.on('game:selectTarget', (dieIndex, targetPlayerId) => {
