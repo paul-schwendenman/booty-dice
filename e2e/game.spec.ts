@@ -67,8 +67,8 @@ test.describe('Game Flow', () => {
 			// After rolling, should still see dice
 			await expect(page.locator('.die')).toHaveCount(6);
 
-			// Rolls remaining should decrease
-			await expect(page.getByText(/Rolls: [0-2]/)).toBeVisible();
+			// Rolls remaining should decrease (format is "Rolls left: X")
+			await expect(page.getByText(/Rolls left: [0-2]/)).toBeVisible();
 		}
 	});
 
