@@ -243,47 +243,88 @@ export class GameEngine {
 	}
 
 	private addTurnSummary(player: Player, rollsUsed: number, effects: ResolvedEffect[]): void {
-		const summaryParts: string[] = [];
+		const summaryActions: string[] = [];
 
-		// Count rolls
-		summaryParts.push(`${rollsUsed} roll${rollsUsed !== 1 ? 's' : ''}`);
-
-		// Calculate net coins for the player
-		let coinsGained = 0;
-		let coinsLost = 0;
-		let damageDealt = 0;
-		let damageReceived = 0;
+		// Track aggregated values
+		let coinsFromCenter = 0; // from doubloon dice
+		let coinsLostToX = 0; // from x_marks_spot
+		let plankWalks = 0; // from walk_plank
 		let shieldsGained = 0;
-		let livesLost = 0;
+		const stolenFrom: Map<string, number> = new Map(); // targetName -> amount
+		const attacked: Map<string, number> = new Map(); // targetName -> damage
 
 		effects.forEach((effect) => {
 			if (effect.targetId === player.id) {
-				if (effect.type === 'coins_gained') coinsGained += effect.amount;
-				if (effect.type === 'coins_lost') coinsLost += effect.amount;
-				if (effect.type === 'shield_gained') shieldsGained += effect.amount;
-				if (effect.type === 'life_lost') livesLost += effect.amount;
-				if (effect.type === 'damage') damageReceived += effect.amount;
+				// Effects happening to the current player
+				if (effect.type === 'coins_gained' && !effect.sourceId) {
+					coinsFromCenter += effect.amount;
+				} else if (effect.type === 'coins_lost' && !effect.sourceId) {
+					coinsLostToX += effect.amount;
+				} else if (effect.type === 'life_lost' && !effect.sourceId) {
+					plankWalks += effect.amount;
+				} else if (effect.type === 'shield_gained') {
+					shieldsGained += effect.amount;
+				}
 			} else {
-				if (effect.type === 'damage' && effect.sourceId === player.id) damageDealt += effect.amount;
-				if (effect.type === 'life_lost' && effect.sourceId === player.id) damageDealt += effect.amount;
+				// Effects happening to other players (caused by current player)
+				if (effect.sourceId === player.id) {
+					if (effect.type === 'coins_lost') {
+						// From jolly_roger - stolen coins
+						const targetPlayer = this.state.players.find((p) => p.id === effect.targetId);
+						const targetName = targetPlayer?.name || 'someone';
+						stolenFrom.set(targetName, (stolenFrom.get(targetName) || 0) + effect.amount);
+					} else if (effect.type === 'damage' || effect.type === 'life_lost') {
+						// From cutlass or combos
+						const targetPlayer = this.state.players.find((p) => p.id === effect.targetId);
+						const targetName = targetPlayer?.name || 'someone';
+						attacked.set(targetName, (attacked.get(targetName) || 0) + effect.amount);
+					}
+				}
 			}
 		});
 
-		// Build summary parts
-		const netCoins = coinsGained - coinsLost;
-		if (netCoins > 0) summaryParts.push(`+${netCoins} coins`);
-		else if (netCoins < 0) summaryParts.push(`${netCoins} coins`);
+		// Build action descriptions
+		if (coinsFromCenter > 0) {
+			summaryActions.push(`took ${coinsFromCenter} from the center`);
+		}
 
-		if (damageDealt > 0) summaryParts.push(`dealt ${damageDealt} dmg`);
-		if (damageReceived > 0) summaryParts.push(`took ${damageReceived} dmg`);
-		if (livesLost > 0) summaryParts.push(`lost ${livesLost} life`);
-		if (shieldsGained > 0) summaryParts.push(`+${shieldsGained} shield`);
+		stolenFrom.forEach((amount, targetName) => {
+			summaryActions.push(`stole ${amount} from ${targetName}`);
+		});
 
-		this.addLog(
-			player.id,
-			`Turn end: ${player.name} - ${summaryParts.join(', ')}`,
-			'summary'
-		);
+		attacked.forEach((damage, targetName) => {
+			if (damage === 1) {
+				summaryActions.push(`shot ${targetName}`);
+			} else {
+				summaryActions.push(`dealt ${damage} damage to ${targetName}`);
+			}
+		});
+
+		if (coinsLostToX > 0) {
+			summaryActions.push(`lost ${coinsLostToX} to X marks`);
+		}
+
+		if (plankWalks > 0) {
+			if (plankWalks === 1) {
+				summaryActions.push(`walked the plank`);
+			} else {
+				summaryActions.push(`walked the plank ${plankWalks} times`);
+			}
+		}
+
+		if (shieldsGained > 0) {
+			summaryActions.push(`raised ${shieldsGained} shield${shieldsGained > 1 ? 's' : ''}`);
+		}
+
+		// Create summary message
+		let message: string;
+		if (summaryActions.length === 0) {
+			message = `${player.name}'s turn: nothing happened`;
+		} else {
+			message = `${player.name}'s turn: ${summaryActions.join('. ')}.`;
+		}
+
+		this.addLog(player.id, message, 'summary');
 	}
 
 	private describeDice(dice: Die[]): string {
