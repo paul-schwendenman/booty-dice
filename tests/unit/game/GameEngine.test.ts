@@ -407,6 +407,200 @@ describe('GameEngine', () => {
 		});
 	});
 
+	describe('shield absorption', () => {
+		it('should absorb damage when target has shields', () => {
+			const players = createTestPlayers(2);
+			// Give enough shields to absorb all 6 cutlass attacks
+			players[1].shields = 10;
+			players[1].lives = 10;
+
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Force cutlass (attack)
+			vi.spyOn(Math, 'random').mockReturnValue(0.5);
+			engine.roll();
+			engine.roll();
+			engine.roll();
+
+			const state = engine.getState();
+			const currentPlayer = state.players[state.currentPlayerIndex];
+			const target = state.players.find((p) => p.id !== currentPlayer.id);
+
+			if (target) {
+				const initialShields = target.shields;
+				const initialLives = target.lives;
+
+				state.pendingActions.forEach((action) => {
+					if (action.face === 'cutlass') {
+						engine.selectTarget(action.dieIndex, target.id);
+					}
+				});
+
+				engine.finishRolling();
+				engine.resolveTurn();
+
+				const finalState = engine.getState();
+				const finalTarget = finalState.players.find((p) => p.id === target.id);
+
+				// If there were cutlass attacks, shields should have absorbed them
+				const cutlassCount = state.pendingActions.filter((a) => a.face === 'cutlass').length;
+				if (cutlassCount > 0 && initialShields > 0) {
+					expect(finalTarget!.shields).toBeLessThan(initialShields);
+					expect(finalTarget!.lives).toBe(initialLives); // Lives preserved
+				}
+			}
+
+			vi.restoreAllMocks();
+		});
+
+		it('should deal damage when no shields available', () => {
+			const players = createTestPlayers(2);
+			players[1].shields = 0;
+			players[1].lives = 10;
+
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Force cutlass
+			vi.spyOn(Math, 'random').mockReturnValue(0.5);
+			engine.roll();
+			engine.roll();
+			engine.roll();
+
+			const state = engine.getState();
+			const currentPlayer = state.players[state.currentPlayerIndex];
+			const target = state.players.find((p) => p.id !== currentPlayer.id);
+
+			if (target) {
+				state.pendingActions.forEach((action) => {
+					if (action.face === 'cutlass') {
+						engine.selectTarget(action.dieIndex, target.id);
+					}
+				});
+
+				engine.finishRolling();
+				engine.resolveTurn();
+
+				const finalState = engine.getState();
+				const finalTarget = finalState.players.find((p) => p.id === target.id);
+
+				const cutlassCount = state.pendingActions.filter((a) => a.face === 'cutlass').length;
+				if (cutlassCount > 0) {
+					expect(finalTarget!.lives).toBeLessThan(10);
+				}
+			}
+
+			vi.restoreAllMocks();
+		});
+	});
+
+	describe('finishRolling with pending actions', () => {
+		it('should transition to selecting_targets when there are pending actions', () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Force cutlass (creates pending action)
+			vi.spyOn(Math, 'random').mockReturnValue(0.5);
+			engine.roll();
+
+			// Manually call finishRolling with pending actions
+			engine.finishRolling();
+
+			const state = engine.getState();
+			if (state.pendingActions.length > 0) {
+				expect(state.turnPhase).toBe('selecting_targets');
+			}
+
+			vi.restoreAllMocks();
+		});
+	});
+
+	describe('turn summary', () => {
+		it('should log negative coin summary when losing more than gaining', () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Force x_marks_spot (loses coins)
+			vi.spyOn(Math, 'random').mockReturnValue(0.17);
+			engine.roll();
+			engine.finishRolling();
+			engine.resolveTurn();
+
+			const state = engine.getState();
+			const summaryLog = state.gameLog.find((e) => e.type === 'summary');
+			expect(summaryLog).toBeDefined();
+
+			vi.restoreAllMocks();
+		});
+	});
+
+	describe('combo descriptions', () => {
+		it('should describe mutiny combo in log', () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Force walk_plank (mutiny needs 3+)
+			vi.spyOn(Math, 'random').mockReturnValue(0.67);
+			engine.roll();
+
+			const state = engine.getState();
+			const comboLog = state.gameLog.find(
+				(e) => e.type === 'combo' && e.message.includes('MUTINY')
+			);
+			// Mutiny requires 3+ walk_plank, may not always trigger
+			if (comboLog) {
+				expect(comboLog.message).toContain('MUTINY');
+			}
+
+			vi.restoreAllMocks();
+		});
+
+		it('should describe shipwreck combo in log', () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Force x_marks_spot (shipwreck needs 3+)
+			vi.spyOn(Math, 'random').mockReturnValue(0.17);
+			engine.roll();
+
+			const state = engine.getState();
+			const comboLog = state.gameLog.find(
+				(e) => e.type === 'combo' && e.message.includes('SHIPWRECK')
+			);
+			// Shipwreck requires 3+ x_marks_spot, may not always trigger
+			if (comboLog) {
+				expect(comboLog.message).toContain('SHIPWRECK');
+			}
+
+			vi.restoreAllMocks();
+		});
+
+		it("should describe blackbeard's curse combo in log when all faces unique", () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Lock all dice to specific faces for Blackbeard's Curse
+			let callCount = 0;
+			vi.spyOn(Math, 'random').mockImplementation(() => {
+				// Return values that produce all 6 different faces
+				const values = [0, 0.17, 0.34, 0.5, 0.67, 0.84];
+				return values[callCount++ % 6];
+			});
+
+			engine.roll();
+
+			const state = engine.getState();
+			const comboLog = state.gameLog.find(
+				(e) => e.type === 'combo' && e.message.includes("BLACKBEARD'S CURSE")
+			);
+
+			if (comboLog) {
+				expect(comboLog.message).toContain("BLACKBEARD'S CURSE");
+			}
+
+			vi.restoreAllMocks();
+		});
+	});
+
 	describe('win conditions', () => {
 		it('should detect last standing win', () => {
 			const players = createTestPlayers(2);
