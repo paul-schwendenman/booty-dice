@@ -108,11 +108,11 @@
 					<div class="combo-list">
 						<div class="combo-item">
 							<strong>🌊 Mutiny</strong>
-							<p>3+ Walk the Planks - Lose 3 lives instantly!</p>
+							<p>3+ Walk the Planks - All enemies lose 1 life (+1 per extra plank)</p>
 						</div>
 						<div class="combo-item">
 							<strong>❌ Shipwreck</strong>
-							<p>3+ X Marks the Spot - Lose half your doubloons!</p>
+							<p>3+ X Marks the Spot - All enemies lose 3 doubloons (+1 per extra X)</p>
 						</div>
 						<div class="combo-item">
 							<strong>☠️ Blackbeard's Curse</strong>
