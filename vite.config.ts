@@ -35,5 +35,9 @@ const webSocketServer: Plugin = {
 };
 
 export default defineConfig({
-	plugins: [sveltekit(), webSocketServer]
+	plugins: [sveltekit(), webSocketServer],
+	server: {
+		host: true,
+		allowedHosts: ['localhost', '.loca.lt']
+	}
 });
