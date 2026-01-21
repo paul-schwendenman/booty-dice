@@ -65,8 +65,12 @@ export class GameEngine {
 		this.state.dice = result.dice;
 		this.state.rollsRemaining--;
 
-		// Detect pending targeted actions
-		this.state.pendingActions = this.detectPendingActions(result.dice);
+		// Detect pending targeted actions (Blackbeard's Curse overrides everything, no targets needed)
+		if (result.combo === 'blackbeards_curse') {
+			this.state.pendingActions = [];
+		} else {
+			this.state.pendingActions = this.detectPendingActions(result.dice);
+		}
 
 		const canRollAgain = this.state.rollsRemaining > 0;
 
@@ -258,6 +262,11 @@ export class GameEngine {
 	private addTurnSummary(player: Player, rollsUsed: number, effects: ResolvedEffect[]): void {
 		const summaryActions: string[] = [];
 
+		// Detect if Blackbeard's Curse is active (all 6 different faces)
+		// Combo effects are already logged in the roll message, so we skip them in the summary
+		const faces = this.state.dice.map((d) => d.face);
+		const isBlackbeardsCurse = new Set(faces).size === 6;
+
 		// Track aggregated values
 		let coinsFromCenter = 0; // from doubloon dice
 		let coinsLostToX = 0; // from x_marks_spot
@@ -280,7 +289,8 @@ export class GameEngine {
 				}
 			} else {
 				// Effects happening to other players (caused by current player)
-				if (effect.sourceId === player.id) {
+				// Skip for Blackbeard's Curse - all effects are from the curse and already logged
+				if (effect.sourceId === player.id && !isBlackbeardsCurse) {
 					if (effect.type === 'coins_lost') {
 						// From jolly_roger - stolen coins
 						const targetPlayer = this.state.players.find((p) => p.id === effect.targetId);
