@@ -15,7 +15,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:clients": "npx tsx scripts/test-clients.ts"
+    "test:clients": "npx tsx scripts/test-clients.ts",
+    "test:browsers": "./scripts/open-browsers.sh"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",
