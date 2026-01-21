@@ -83,29 +83,36 @@ AI runs on the server in `AIPlayer.ts`. It simulates thinking delays and makes d
 ## Socket Events
 
 **Client → Server:**
+
 - `lobby:create`, `lobby:join`, `lobby:ready`, `lobby:addAI`, `lobby:startGame`
 - `game:lockDice`, `game:roll`, `game:selectTarget`, `game:endTurn`
 
 **Server → Client:**
+
 - `lobby:state`, `lobby:playerJoined`, `lobby:gameStarting`
 - `game:state`, `game:diceRolled`, `game:turnChanged`, `game:playerEliminated`, `game:ended`
 
 ## Common Tasks
 
 ### Adding a new dice face
+
 1. Add to `DiceFace` type in `src/lib/types/dice.ts`
 2. Add emoji to `FACE_EMOJI` map
 3. Add resolution logic in `ActionResolver.ts`
 4. Update AI strategy in `AIStrategy.ts` if needed
 
 ### Modifying game rules
+
 Core game logic is in `src/lib/server/game/`:
+
 - `GameEngine.ts` - turn flow, win conditions
 - `DiceRoller.ts` - combo detection
 - `ActionResolver.ts` - what each dice face does
 
 ### Adding UI features
+
 Components are in `src/lib/components/`. Use Svelte 5 runes:
+
 - `let x = $state(initialValue)` for reactive state
 - `let y = $derived(expression)` for computed values
 - `$effect(() => { ... })` for side effects

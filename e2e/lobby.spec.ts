@@ -214,7 +214,7 @@ test.describe('Lobby - Multiplayer', () => {
 			// Wait for join button to be enabled
 			await page2.waitForFunction(() => {
 				const btns = Array.from(document.querySelectorAll('button'));
-				const joinBtn = btns.find(b => b.textContent?.includes('Join Crew'));
+				const joinBtn = btns.find((b) => b.textContent?.includes('Join Crew'));
 				return joinBtn && !joinBtn.hasAttribute('disabled');
 			});
 
@@ -222,7 +222,9 @@ test.describe('Lobby - Multiplayer', () => {
 			await page2.getByRole('button', { name: 'Join Crew' }).click();
 
 			// Wait for join to complete
-			await expect(page2.getByRole('heading', { name: 'Crew Assembly' })).toBeVisible({ timeout: 10000 });
+			await expect(page2.getByRole('heading', { name: 'Crew Assembly' })).toBeVisible({
+				timeout: 10000
+			});
 		}
 
 		// Should see crew assembly with 2 players

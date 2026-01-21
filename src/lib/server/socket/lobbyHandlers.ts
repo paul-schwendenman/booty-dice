@@ -11,11 +11,7 @@ import { handleAITurn } from './gameHandlers.js';
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
-export function setupLobbyHandlers(
-	io: AppServer,
-	socket: AppSocket,
-	roomManager: RoomManager
-) {
+export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager: RoomManager) {
 	socket.on('lobby:create', (playerName, callback) => {
 		const roomCode = roomManager.createRoom(socket.id, playerName);
 		socket.join(roomCode);
@@ -48,11 +44,7 @@ export function setupLobbyHandlers(
 		if (player) {
 			io.to(normalizedCode).emit('lobby:playerJoined', player);
 		}
-		io.to(normalizedCode).emit(
-			'lobby:state',
-			players,
-			roomManager.canStartGame(normalizedCode)
-		);
+		io.to(normalizedCode).emit('lobby:state', players, roomManager.canStartGame(normalizedCode));
 	});
 
 	socket.on('lobby:ready', (isReady) => {
@@ -100,14 +92,18 @@ export function setupLobbyHandlers(
 
 		const gameState = roomManager.startGame(roomCode);
 		if (gameState) {
-			console.log(`[lobby:startGame] Game created, first player index: ${gameState.currentPlayerIndex}`);
+			console.log(
+				`[lobby:startGame] Game created, first player index: ${gameState.currentPlayerIndex}`
+			);
 			setTimeout(() => {
 				console.log(`[lobby:startGame] Emitting initial game state`);
 				io.to(roomCode).emit('game:state', gameState);
 
 				// Check if the first player is AI and trigger their turn
 				const firstPlayer = gameState.players[gameState.currentPlayerIndex];
-				console.log(`[lobby:startGame] First player: ${firstPlayer.name}, isAI: ${firstPlayer.isAI}`);
+				console.log(
+					`[lobby:startGame] First player: ${firstPlayer.name}, isAI: ${firstPlayer.isAI}`
+				);
 				if (firstPlayer.isAI && !firstPlayer.isEliminated) {
 					const room = roomManager.getRoom(roomCode);
 					if (room?.gameEngine) {

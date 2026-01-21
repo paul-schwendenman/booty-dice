@@ -24,14 +24,7 @@ describe('ActionResolver', () => {
 	describe('individual dice effects', () => {
 		it('should give +2 doubloons for each doubloon die', () => {
 			const currentPlayer = createTestPlayer();
-			const dice = createTestDice([
-				'doubloon',
-				'doubloon',
-				'shield',
-				'shield',
-				'shield',
-				'shield'
-			]);
+			const dice = createTestDice(['doubloon', 'doubloon', 'shield', 'shield', 'shield', 'shield']);
 
 			const effects = resolver.resolve(dice, [], currentPlayer, [currentPlayer]);
 
@@ -107,14 +100,7 @@ describe('ActionResolver', () => {
 		it('should deal 1 damage with cutlass to selected target', () => {
 			const players = createTestPlayers(2);
 			const [currentPlayer, target] = players;
-			const dice = createTestDice([
-				'cutlass',
-				'shield',
-				'shield',
-				'shield',
-				'shield',
-				'shield'
-			]);
+			const dice = createTestDice(['cutlass', 'shield', 'shield', 'shield', 'shield', 'shield']);
 
 			const pendingActions: PendingAction[] = [
 				{
@@ -127,9 +113,7 @@ describe('ActionResolver', () => {
 
 			const effects = resolver.resolve(dice, pendingActions, currentPlayer, players);
 
-			const damageEffects = effects.filter(
-				(e) => e.type === 'damage' && e.targetId === target.id
-			);
+			const damageEffects = effects.filter((e) => e.type === 'damage' && e.targetId === target.id);
 			expect(damageEffects).toHaveLength(1);
 			expect(damageEffects[0].amount).toBe(1);
 			expect(damageEffects[0].sourceId).toBe(currentPlayer.id);
@@ -160,9 +144,7 @@ describe('ActionResolver', () => {
 
 			const effects = resolver.resolve(dice, pendingActions, currentPlayer, players);
 
-			const stealLoss = effects.find(
-				(e) => e.type === 'coins_lost' && e.targetId === target.id
-			);
+			const stealLoss = effects.find((e) => e.type === 'coins_lost' && e.targetId === target.id);
 			const stealGain = effects.find(
 				(e) => e.type === 'coins_gained' && e.targetId === currentPlayer.id
 			);
@@ -198,9 +180,7 @@ describe('ActionResolver', () => {
 
 			const effects = resolver.resolve(dice, pendingActions, currentPlayer, players);
 
-			const stealLoss = effects.find(
-				(e) => e.type === 'coins_lost' && e.targetId === target.id
-			);
+			const stealLoss = effects.find((e) => e.type === 'coins_lost' && e.targetId === target.id);
 
 			expect(stealLoss!.amount).toBe(1);
 		});
@@ -240,14 +220,7 @@ describe('ActionResolver', () => {
 		it('should not create effect for cutlass without target', () => {
 			const players = createTestPlayers(2);
 			const [currentPlayer] = players;
-			const dice = createTestDice([
-				'cutlass',
-				'shield',
-				'shield',
-				'shield',
-				'shield',
-				'shield'
-			]);
+			const dice = createTestDice(['cutlass', 'shield', 'shield', 'shield', 'shield', 'shield']);
 
 			// No pending action with target
 			const effects = resolver.resolve(dice, [], currentPlayer, players);
@@ -267,9 +240,7 @@ describe('ActionResolver', () => {
 				const effects = resolver.resolve(dice, [], currentPlayer, players);
 
 				others.forEach((other) => {
-					const lifeEffect = effects.find(
-						(e) => e.type === 'life_lost' && e.targetId === other.id
-					);
+					const lifeEffect = effects.find((e) => e.type === 'life_lost' && e.targetId === other.id);
 					const coinEffect = effects.find(
 						(e) => e.type === 'coins_lost' && e.targetId === other.id
 					);
@@ -318,9 +289,7 @@ describe('ActionResolver', () => {
 				others.forEach((other) => {
 					const lifeEffect = effects.find(
 						(e) =>
-							e.type === 'life_lost' &&
-							e.targetId === other.id &&
-							e.description.includes('Mutiny')
+							e.type === 'life_lost' && e.targetId === other.id && e.description.includes('Mutiny')
 					);
 					expect(lifeEffect).toBeDefined();
 					expect(lifeEffect!.amount).toBe(1);
@@ -336,9 +305,7 @@ describe('ActionResolver', () => {
 
 				const mutinyEffect = effects.find(
 					(e) =>
-						e.type === 'life_lost' &&
-						e.targetId === target.id &&
-						e.description.includes('Mutiny')
+						e.type === 'life_lost' && e.targetId === target.id && e.description.includes('Mutiny')
 				);
 				expect(mutinyEffect).toBeDefined();
 				expect(mutinyEffect!.amount).toBe(3); // 1 base + 2 bonus
@@ -439,16 +406,10 @@ describe('ActionResolver', () => {
 			expect(effects.some((e) => e.type === 'coins_gained')).toBe(true); // doubloon
 			expect(effects.some((e) => e.type === 'shield_gained')).toBe(true); // shield
 			expect(effects.some((e) => e.type === 'damage')).toBe(true); // cutlass
-			expect(
-				effects.some(
-					(e) => e.type === 'coins_lost' && e.targetId === target.id
-				)
-			).toBe(true); // jolly_roger steal
-			expect(
-				effects.some(
-					(e) => e.type === 'life_lost' && e.targetId === currentPlayer.id
-				)
-			).toBe(true); // walk_plank
+			expect(effects.some((e) => e.type === 'coins_lost' && e.targetId === target.id)).toBe(true); // jolly_roger steal
+			expect(effects.some((e) => e.type === 'life_lost' && e.targetId === currentPlayer.id)).toBe(
+				true
+			); // walk_plank
 		});
 	});
 });

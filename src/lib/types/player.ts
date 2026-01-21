@@ -15,11 +15,7 @@ export interface PlayerAction {
 	targetPlayerId: string;
 }
 
-export function createPlayer(
-	id: string,
-	name: string,
-	isAI: boolean = false
-): Player {
+export function createPlayer(id: string, name: string, isAI: boolean = false): Player {
 	return {
 		id,
 		name,

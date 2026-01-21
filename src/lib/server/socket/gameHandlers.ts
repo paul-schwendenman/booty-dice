@@ -15,11 +15,7 @@ type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerE
 
 const aiPlayer = new AIPlayer();
 
-export function setupGameHandlers(
-	io: AppServer,
-	socket: AppSocket,
-	roomManager: RoomManager
-) {
+export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager: RoomManager) {
 	socket.on('game:lockDice', (diceIndices) => {
 		const room = roomManager.getRoomByPlayer(socket.id);
 		if (!room?.gameEngine) return;
@@ -56,10 +52,20 @@ export function setupGameHandlers(
 		}
 
 		const state = room.gameEngine.getState();
-		console.log('[game:finishRolling] current player:', state.players[state.currentPlayerIndex].id, 'socket:', socket.id);
+		console.log(
+			'[game:finishRolling] current player:',
+			state.players[state.currentPlayerIndex].id,
+			'socket:',
+			socket.id
+		);
 		if (state.players[state.currentPlayerIndex].id !== socket.id) return;
 
-		console.log('[game:finishRolling] before:', state.turnPhase, 'pendingActions:', state.pendingActions.length);
+		console.log(
+			'[game:finishRolling] before:',
+			state.turnPhase,
+			'pendingActions:',
+			state.pendingActions.length
+		);
 		room.gameEngine.finishRolling();
 		const newState = room.gameEngine.getState();
 		console.log('[game:finishRolling] after:', newState.turnPhase);
@@ -121,7 +127,9 @@ function handleEndTurn(
 	roomManager: RoomManager
 ) {
 	const currentPlayer = gameEngine.getCurrentPlayer();
-	console.log(`[handleEndTurn] Starting for player: ${currentPlayer.name} (${currentPlayer.id}), isAI: ${currentPlayer.isAI}`);
+	console.log(
+		`[handleEndTurn] Starting for player: ${currentPlayer.name} (${currentPlayer.id}), isAI: ${currentPlayer.isAI}`
+	);
 
 	// Resolve the current turn
 	const resolution = gameEngine.resolveTurn();
@@ -148,7 +156,9 @@ function handleEndTurn(
 	console.log(`[handleEndTurn] Calling gameEngine.endTurn()`);
 	gameEngine.endTurn();
 	const newState = gameEngine.getState();
-	console.log(`[handleEndTurn] New turn - player index: ${newState.currentPlayerIndex}, phase: ${newState.phase}, turnPhase: ${newState.turnPhase}`);
+	console.log(
+		`[handleEndTurn] New turn - player index: ${newState.currentPlayerIndex}, phase: ${newState.phase}, turnPhase: ${newState.turnPhase}`
+	);
 	io.to(roomCode).emit('game:state', newState);
 
 	// Don't continue if game ended during endTurn (edge case)
@@ -161,7 +171,9 @@ function handleEndTurn(
 
 	// Check if next player is AI
 	const nextPlayer = newState.players[newState.currentPlayerIndex];
-	console.log(`[handleEndTurn] Next player: ${nextPlayer.name} (${nextPlayer.id}), isAI: ${nextPlayer.isAI}, isEliminated: ${nextPlayer.isEliminated}`);
+	console.log(
+		`[handleEndTurn] Next player: ${nextPlayer.name} (${nextPlayer.id}), isAI: ${nextPlayer.isAI}, isEliminated: ${nextPlayer.isEliminated}`
+	);
 	if (nextPlayer.isAI && !nextPlayer.isEliminated) {
 		console.log(`[handleEndTurn] Scheduling AI turn via setImmediate`);
 		// Use setImmediate to break the synchronous call chain and allow
@@ -184,7 +196,9 @@ export async function handleAITurn(
 	roomManager: RoomManager
 ) {
 	const state = gameEngine.getState();
-	console.log(`[handleAITurn] Starting - phase: ${state.phase}, turnPhase: ${state.turnPhase}, rollsRemaining: ${state.rollsRemaining}`);
+	console.log(
+		`[handleAITurn] Starting - phase: ${state.phase}, turnPhase: ${state.turnPhase}, rollsRemaining: ${state.rollsRemaining}`
+	);
 
 	// Don't run AI turn if game has ended
 	if (state.phase === 'ended') {
@@ -194,7 +208,9 @@ export async function handleAITurn(
 
 	// Verify the current player is actually an AI and not eliminated
 	const currentPlayer = state.players[state.currentPlayerIndex];
-	console.log(`[handleAITurn] Current player: ${currentPlayer.name} (${currentPlayer.id}), isAI: ${currentPlayer.isAI}, isEliminated: ${currentPlayer.isEliminated}`);
+	console.log(
+		`[handleAITurn] Current player: ${currentPlayer.name} (${currentPlayer.id}), isAI: ${currentPlayer.isAI}, isEliminated: ${currentPlayer.isEliminated}`
+	);
 	if (!currentPlayer.isAI || currentPlayer.isEliminated) {
 		console.error('[handleAITurn] Called but current player is not a valid AI');
 		return;
@@ -219,7 +235,9 @@ export async function handleAITurn(
 			}
 			try {
 				const result = gameEngine.roll();
-				console.log(`[handleAITurn:onRoll] Roll result: ${result.dice.map(d => d.face).join(', ')}, combo: ${result.combo || 'none'}`);
+				console.log(
+					`[handleAITurn:onRoll] Roll result: ${result.dice.map((d) => d.face).join(', ')}, combo: ${result.combo || 'none'}`
+				);
 				io.to(roomCode).emit('game:diceRolled', result.dice, result.combo);
 				io.to(roomCode).emit('game:state', gameEngine.getState());
 				return result.dice;
@@ -236,11 +254,15 @@ export async function handleAITurn(
 			}
 			gameEngine.finishRolling();
 			const newState = gameEngine.getState();
-			console.log(`[handleAITurn:onFinishRolling] New turnPhase: ${newState.turnPhase}, pendingActions: ${newState.pendingActions.length}`);
+			console.log(
+				`[handleAITurn:onFinishRolling] New turnPhase: ${newState.turnPhase}, pendingActions: ${newState.pendingActions.length}`
+			);
 			io.to(roomCode).emit('game:state', newState);
 		},
 		onSelectTarget: (dieIndex, targetId) => {
-			console.log(`[handleAITurn:onSelectTarget] Selecting target: dieIndex=${dieIndex}, targetId=${targetId}`);
+			console.log(
+				`[handleAITurn:onSelectTarget] Selecting target: dieIndex=${dieIndex}, targetId=${targetId}`
+			);
 			if (gameEngine.getState().phase === 'ended') {
 				console.log(`[handleAITurn:onSelectTarget] Game ended, skipping`);
 				return;

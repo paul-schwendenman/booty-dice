@@ -21,13 +21,16 @@ const webSocketServer: Plugin = {
 		const socketServerPath = path.join(__dirname, 'src/lib/server/socket/socketServer.ts');
 
 		// Use vite's ssrLoadModule to properly resolve $lib aliases
-		server.ssrLoadModule(socketServerPath).then((module) => {
-			const { setupSocketHandlers } = module as { setupSocketHandlers: (io: Server) => void };
-			setupSocketHandlers(io);
-			console.log('Socket.io server initialized');
-		}).catch((err) => {
-			console.error('Failed to load socket server:', err);
-		});
+		server
+			.ssrLoadModule(socketServerPath)
+			.then((module) => {
+				const { setupSocketHandlers } = module as { setupSocketHandlers: (io: Server) => void };
+				setupSocketHandlers(io);
+				console.log('Socket.io server initialized');
+			})
+			.catch((err) => {
+				console.error('Failed to load socket server:', err);
+			});
 
 		// Store globally for potential access
 		(globalThis as Record<string, unknown>).__socketIO = io;

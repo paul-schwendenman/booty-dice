@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GameEngine } from '$lib/server/game/GameEngine.js';
-import { createTestPlayer, createTestPlayers, resetPlayerIdCounter } from '../../factories/player.js';
+import {
+	createTestPlayer,
+	createTestPlayers,
+	resetPlayerIdCounter
+} from '../../factories/player.js';
 
 describe('GameEngine', () => {
 	beforeEach(() => {

@@ -40,12 +40,7 @@ export class AIStrategy {
 		return [...new Set(keepIndices)];
 	}
 
-	shouldRollAgain(
-		dice: Die[],
-		rollsRemaining: number,
-		self: Player,
-		state: GameState
-	): boolean {
+	shouldRollAgain(dice: Die[], rollsRemaining: number, self: Player, state: GameState): boolean {
 		if (rollsRemaining <= 0) return false;
 
 		const unlockedDice = dice.filter((d) => !d.locked);
@@ -65,14 +60,8 @@ export class AIStrategy {
 		return negativeDice >= 1;
 	}
 
-	selectTarget(
-		action: 'cutlass' | 'jolly_roger',
-		self: Player,
-		state: GameState
-	): Player | null {
-		const otherPlayers = state.players.filter(
-			(p) => p.id !== self.id && !p.isEliminated
-		);
+	selectTarget(action: 'cutlass' | 'jolly_roger', self: Player, state: GameState): Player | null {
+		const otherPlayers = state.players.filter((p) => p.id !== self.id && !p.isEliminated);
 
 		if (otherPlayers.length === 0) return null;
 
@@ -99,9 +88,7 @@ export class AIStrategy {
 	}
 
 	private otherPlayersHaveLowLives(state: GameState, self: Player): boolean {
-		return state.players.some(
-			(p) => p.id !== self.id && !p.isEliminated && p.lives <= 3
-		);
+		return state.players.some((p) => p.id !== self.id && !p.isEliminated && p.lives <= 3);
 	}
 
 	private otherPlayersHaveLotsOfGold(state: GameState, self: Player): boolean {

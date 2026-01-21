@@ -22,22 +22,28 @@ export class AIPlayer {
 		let rollsRemaining = state.rollsRemaining;
 		let currentDice = state.dice;
 
-		console.log(`[AIPlayer.takeTurn] Starting turn for ${player.name}, rollsRemaining: ${rollsRemaining}`);
-		console.log(`[AIPlayer.takeTurn] Initial dice: ${currentDice.map(d => d.face).join(', ')}`);
+		console.log(
+			`[AIPlayer.takeTurn] Starting turn for ${player.name}, rollsRemaining: ${rollsRemaining}`
+		);
+		console.log(`[AIPlayer.takeTurn] Initial dice: ${currentDice.map((d) => d.face).join(', ')}`);
 
 		// First roll is mandatory - dice start as placeholders
 		console.log(`[AIPlayer.takeTurn] Waiting ${this.thinkDelay}ms before first roll...`);
 		await this.delay(this.thinkDelay);
 		console.log(`[AIPlayer.takeTurn] Performing mandatory first roll`);
 		currentDice = await callbacks.onRoll();
-		console.log(`[AIPlayer.takeTurn] First roll complete: ${currentDice.map(d => d.face).join(', ')}`);
+		console.log(
+			`[AIPlayer.takeTurn] First roll complete: ${currentDice.map((d) => d.face).join(', ')}`
+		);
 		rollsRemaining--;
 
 		// Subsequent rolls are optional
 		let rollIteration = 1;
 		while (rollsRemaining > 0) {
 			rollIteration++;
-			console.log(`[AIPlayer.takeTurn] Roll iteration ${rollIteration}, rollsRemaining: ${rollsRemaining}`);
+			console.log(
+				`[AIPlayer.takeTurn] Roll iteration ${rollIteration}, rollsRemaining: ${rollsRemaining}`
+			);
 
 			console.log(`[AIPlayer.takeTurn] Waiting ${this.thinkDelay}ms before deciding...`);
 			await this.delay(this.thinkDelay);
@@ -45,7 +51,9 @@ export class AIPlayer {
 
 			// Decide which dice to keep
 			const keepIndices = this.strategy.decideDiceToKeep(currentDice, player, state);
-			console.log(`[AIPlayer.takeTurn] Decided to keep dice at indices: ${JSON.stringify(keepIndices)}`);
+			console.log(
+				`[AIPlayer.takeTurn] Decided to keep dice at indices: ${JSON.stringify(keepIndices)}`
+			);
 			callbacks.onLockDice(keepIndices);
 
 			// Decide whether to roll again
@@ -60,7 +68,9 @@ export class AIPlayer {
 			await this.delay(800);
 			console.log(`[AIPlayer.takeTurn] Calling onRoll callback`);
 			currentDice = await callbacks.onRoll();
-			console.log(`[AIPlayer.takeTurn] Roll complete, new dice: ${currentDice.map(d => d.face).join(', ')}`);
+			console.log(
+				`[AIPlayer.takeTurn] Roll complete, new dice: ${currentDice.map((d) => d.face).join(', ')}`
+			);
 			rollsRemaining--;
 		}
 
@@ -72,10 +82,14 @@ export class AIPlayer {
 		console.log(`[AIPlayer.takeTurn] Waiting ${this.thinkDelay}ms before target selection...`);
 		await this.delay(this.thinkDelay);
 		const pendingActions = this.detectPendingActions(currentDice);
-		console.log(`[AIPlayer.takeTurn] Detected ${pendingActions.length} pending actions: ${JSON.stringify(pendingActions)}`);
+		console.log(
+			`[AIPlayer.takeTurn] Detected ${pendingActions.length} pending actions: ${JSON.stringify(pendingActions)}`
+		);
 
 		for (const action of pendingActions) {
-			console.log(`[AIPlayer.takeTurn] Selecting target for action: ${action.face} at index ${action.dieIndex}`);
+			console.log(
+				`[AIPlayer.takeTurn] Selecting target for action: ${action.face} at index ${action.dieIndex}`
+			);
 			const target = this.strategy.selectTarget(action.face, player, state);
 			if (target) {
 				console.log(`[AIPlayer.takeTurn] Selected target: ${target.name} (${target.id})`);

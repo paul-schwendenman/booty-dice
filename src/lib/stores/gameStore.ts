@@ -21,9 +21,7 @@ function createGameStore() {
 				if (!state) return state;
 				return {
 					...state,
-					players: state.players.map((p) =>
-						p.id === playerId ? { ...p, ...updates } : p
-					)
+					players: state.players.map((p) => (p.id === playerId ? { ...p, ...updates } : p))
 				};
 			}),
 
@@ -46,8 +44,9 @@ export const currentPlayer = derived(gameStore, ($game) =>
 	$game ? $game.players[$game.currentPlayerIndex] : null
 );
 
-export const myPlayer = derived([gameStore, playerStore], ([$game, $player]) =>
-	$game?.players.find((p) => p.id === $player.id) ?? null
+export const myPlayer = derived(
+	[gameStore, playerStore],
+	([$game, $player]) => $game?.players.find((p) => p.id === $player.id) ?? null
 );
 
 export const isMyTurn = derived(
@@ -59,7 +58,6 @@ export const alivePlayers = derived(gameStore, ($game) =>
 	$game ? $game.players.filter((p) => !p.isEliminated) : []
 );
 
-export const otherAlivePlayers = derived(
-	[alivePlayers, playerStore],
-	([$alive, $player]) => $alive.filter((p) => p.id !== $player.id)
+export const otherAlivePlayers = derived([alivePlayers, playerStore], ([$alive, $player]) =>
+	$alive.filter((p) => p.id !== $player.id)
 );

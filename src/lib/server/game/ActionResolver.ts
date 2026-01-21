@@ -1,4 +1,11 @@
-import type { Die, DiceFace, ComboType, Player, PendingAction, ResolvedEffect } from '$lib/types/index.js';
+import type {
+	Die,
+	DiceFace,
+	ComboType,
+	Player,
+	PendingAction,
+	ResolvedEffect
+} from '$lib/types/index.js';
 
 export class ActionResolver {
 	resolve(

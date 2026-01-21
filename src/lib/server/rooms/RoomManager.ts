@@ -44,11 +44,7 @@ export class RoomManager {
 		return code;
 	}
 
-	joinRoom(
-		code: string,
-		socketId: string,
-		name: string
-	): { success: boolean; error?: string } {
+	joinRoom(code: string, socketId: string, name: string): { success: boolean; error?: string } {
 		const room = this.rooms.get(code.toUpperCase());
 		if (!room) return { success: false, error: 'Room not found' };
 		if (room.players.size >= 6) return { success: false, error: 'Room is full' };
@@ -164,11 +160,7 @@ export class RoomManager {
 		return { roomCode: room.code, wasHost };
 	}
 
-	handleReconnect(
-		roomCode: string,
-		oldPlayerId: string,
-		newSocketId: string
-	): boolean {
+	handleReconnect(roomCode: string, oldPlayerId: string, newSocketId: string): boolean {
 		const room = this.rooms.get(roomCode.toUpperCase());
 		if (!room) return false;
 

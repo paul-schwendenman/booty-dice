@@ -202,9 +202,7 @@ async function handleAutoPlay(client: TestClient, state: GameState) {
 		const unresolvedActions = state.pendingActions.filter((a) => !a.resolved);
 		if (unresolvedActions.length > 0) {
 			const action = unresolvedActions[0];
-			const targets = state.players.filter(
-				(p) => p.id !== client.playerId && !p.isEliminated
-			);
+			const targets = state.players.filter((p) => p.id !== client.playerId && !p.isEliminated);
 			if (targets.length > 0) {
 				const target = targets[Math.floor(Math.random() * targets.length)];
 				log(client, `Auto-selecting target: ${target.name} for ${action.face}`);

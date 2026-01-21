@@ -201,7 +201,7 @@ describe('DiceRoller', () => {
 		});
 
 		describe('combo priority', () => {
-			it("should prioritize blackbeards_curse over other combos", () => {
+			it('should prioritize blackbeards_curse over other combos', () => {
 				// Blackbeard's curse requires all unique, so it can't overlap with mutiny/shipwreck
 				const dice = createBlackbeardsCurseDice();
 				dice.forEach((d) => (d.locked = true));
