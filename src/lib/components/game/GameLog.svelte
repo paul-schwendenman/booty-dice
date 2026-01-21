@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { LogEntry } from '$lib/types/index.js';
-	import { onMount, tick } from 'svelte';
+	import { tick } from 'svelte';
 
 	interface Props {
 		entries: LogEntry[];

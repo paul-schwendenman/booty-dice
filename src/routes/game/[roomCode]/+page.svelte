@@ -6,7 +6,6 @@
 	import {
 		gameStore,
 		currentPlayer,
-		myPlayer,
 		isMyTurn,
 		otherAlivePlayers
 	} from '$lib/stores/gameStore.js';
@@ -18,13 +17,11 @@
 	import DiceBoard from '$lib/components/game/DiceBoard.svelte';
 	import PlayerCard from '$lib/components/game/PlayerCard.svelte';
 	import GameLog from '$lib/components/game/GameLog.svelte';
-	import type { Die, ComboType, PendingAction } from '$lib/types/index.js';
-	import { FACE_EMOJI } from '$lib/types/index.js';
+	import type { PendingAction } from '$lib/types/index.js';
 
 	let roomCode = $derived($page.params.roomCode);
 	let game = $derived($gameStore);
 	let current = $derived($currentPlayer);
-	let me = $derived($myPlayer);
 	let myTurn = $derived($isMyTurn);
 	let targets = $derived($otherAlivePlayers);
 	let player = $derived($playerStore);
@@ -68,15 +65,15 @@
 			}
 		});
 
-		socket.on('game:diceRolled', (dice: Die[], combo: ComboType) => {
+		socket.on('game:diceRolled', () => {
 			// State update will come through game:state
 		});
 
-		socket.on('game:playerEliminated', (playerId, eliminatorId) => {
+		socket.on('game:playerEliminated', () => {
 			// Handled in game:state
 		});
 
-		socket.on('game:ended', (winnerId, reason) => {
+		socket.on('game:ended', () => {
 			// Handled in game:state effect
 		});
 
@@ -234,7 +231,7 @@
 						{#if needsTargetSelection}
 							<div class="target-prompt">
 								<p>Select targets for your attacks/steals:</p>
-								{#each unresolvedActions as action}
+								{#each unresolvedActions as action (action.dieIndex)}
 									<Button
 										onclick={() => startTargetSelection(action)}
 										variant="secondary"

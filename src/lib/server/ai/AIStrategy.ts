@@ -40,7 +40,7 @@ export class AIStrategy {
 		return [...new Set(keepIndices)];
 	}
 
-	shouldRollAgain(dice: Die[], rollsRemaining: number, self: Player, state: GameState): boolean {
+	shouldRollAgain(dice: Die[], rollsRemaining: number, _self: Player, _state: GameState): boolean {
 		if (rollsRemaining <= 0) return false;
 
 		const unlockedDice = dice.filter((d) => !d.locked);

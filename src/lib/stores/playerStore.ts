@@ -1,6 +1,6 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
-import { loadSession, saveSession, clearSession, type SessionData } from '$lib/utils/session.js';
+import { loadSession, saveSession, clearSession } from '$lib/utils/session.js';
 
 interface PlayerInfo {
 	id: string;

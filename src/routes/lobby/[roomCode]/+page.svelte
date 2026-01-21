@@ -8,7 +8,6 @@
 	import { gameStore } from '$lib/stores/gameStore.js';
 	import { loadSession } from '$lib/utils/session.js';
 	import Button from '$lib/components/ui/Button.svelte';
-	import PlayerCard from '$lib/components/game/PlayerCard.svelte';
 	import type { Player } from '$lib/types/index.js';
 
 	let roomCode = $derived($page.params.roomCode);
@@ -61,7 +60,7 @@
 			}
 		});
 
-		socket.on('lobby:playerJoined', (newPlayer: Player) => {
+		socket.on('lobby:playerJoined', () => {
 			// State will be updated via lobby:state
 		});
 

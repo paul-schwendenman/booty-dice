@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GameEngine } from '$lib/server/game/GameEngine.js';
-import {
-	createTestPlayer,
-	createTestPlayers,
-	resetPlayerIdCounter
-} from '../../factories/player.js';
+import { createTestPlayers, resetPlayerIdCounter } from '../../factories/player.js';
 
 describe('GameEngine', () => {
 	beforeEach(() => {
@@ -291,7 +287,6 @@ describe('GameEngine', () => {
 
 			const result = engine.resolveTurn();
 
-			const state = engine.getState();
 			const currentPlayerDied = result.eliminations.includes(players[0].id);
 
 			// If the current player took walk_plank damage and died
@@ -310,7 +305,10 @@ describe('GameEngine', () => {
 			// Set current player's doubloons to 23 AFTER engine creation
 			// (engine shuffles players, so we need to update the actual current player)
 			const currentPlayer = engine.getCurrentPlayer();
-			(engine as any).state.players.find((p: any) => p.id === currentPlayer.id).doubloons = 23;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.players.find(
+				(p: { id: string }) => p.id === currentPlayer.id
+			).doubloons = 23;
 
 			// Force doubloons (each gives +2)
 			vi.spyOn(Math, 'random').mockReturnValue(0);
@@ -351,15 +349,13 @@ describe('GameEngine', () => {
 			const engine = new GameEngine(players, 'TEST01');
 
 			// Manually mark player at index 1 as eliminated
-			const state = engine.getState();
-			const player1Id = state.players[1].id;
-
 			vi.spyOn(Math, 'random').mockReturnValue(0);
 			engine.roll();
 			engine.finishRolling();
 			engine.resolveTurn();
 
 			// Manually eliminate player 1 for this test
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(engine as any).state.players[1].isEliminated = true;
 
 			engine.endTurn();
@@ -730,7 +726,6 @@ describe('GameEngine', () => {
 			players[1].shields = 0;
 
 			const engine = new GameEngine(players, 'TEST01');
-			const state = engine.getState();
 
 			// Current player attacks player 1
 			vi.spyOn(Math, 'random').mockReturnValue(0.5); // cutlass

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { DiceRoller } from '$lib/server/game/DiceRoller.js';
 import {
 	createTestDice,

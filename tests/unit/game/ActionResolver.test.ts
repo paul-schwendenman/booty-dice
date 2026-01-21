@@ -254,7 +254,7 @@ describe('ActionResolver', () => {
 
 			it('should not affect eliminated players', () => {
 				const players = createTestPlayers(3);
-				const [currentPlayer, alive, eliminated] = players;
+				const [currentPlayer, , eliminated] = players;
 				eliminated.isEliminated = true;
 
 				const dice = createBlackbeardsCurseDice();

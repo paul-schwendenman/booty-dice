@@ -3,8 +3,7 @@ import type {
 	ClientToServerEvents,
 	ServerToClientEvents,
 	InterServerEvents,
-	SocketData,
-	GameState
+	SocketData
 } from '$lib/types/index.js';
 import type { RoomManager } from '../rooms/RoomManager.js';
 import type { GameEngine } from '../game/GameEngine.js';

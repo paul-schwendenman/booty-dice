@@ -16,6 +16,13 @@ export default ts.config(
 				...globals.browser,
 				...globals.node
 			}
+		},
+		rules: {
+			// Allow underscore-prefixed variables to be unused
+			'@typescript-eslint/no-unused-vars': [
+				'error',
+				{ argsIgnorePattern: '^_', varsIgnorePattern: '^_' }
+			]
 		}
 	},
 	{
@@ -24,6 +31,10 @@ export default ts.config(
 			parserOptions: {
 				parser: ts.parser
 			}
+		},
+		rules: {
+			// goto('/path') is fine for internal SvelteKit routes
+			'svelte/no-navigation-without-resolve': 'off'
 		}
 	},
 	{

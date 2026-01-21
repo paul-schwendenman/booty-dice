@@ -1,4 +1,4 @@
-import type { Die, ComboType } from './dice.js';
+import type { Die } from './dice.js';
 import type { Player } from './player.js';
 
 export type GamePhase = 'waiting' | 'playing' | 'ended';
