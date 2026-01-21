@@ -599,6 +599,66 @@ describe('GameEngine', () => {
 
 			vi.restoreAllMocks();
 		});
+
+		it("should not require target selection for blackbeard's curse", () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Force all 6 different faces for Blackbeard's Curse
+			let callCount = 0;
+			vi.spyOn(Math, 'random').mockImplementation(() => {
+				const values = [0, 0.17, 0.34, 0.5, 0.67, 0.84];
+				return values[callCount++ % 6];
+			});
+
+			engine.roll();
+
+			const state = engine.getState();
+
+			// Verify Blackbeard's Curse was detected
+			const comboLog = state.gameLog.find(
+				(e) => e.type === 'combo' && e.message.includes("BLACKBEARD'S CURSE")
+			);
+			expect(comboLog).toBeDefined();
+
+			// Key fix: no pending actions despite having cutlass and jolly_roger
+			expect(state.pendingActions).toEqual([]);
+			expect(state.turnPhase).toBe('rolling'); // Not 'selecting_targets'
+
+			vi.restoreAllMocks();
+		});
+
+		it("should not include 'stole' or 'shot' in turn summary for blackbeard's curse", () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Force all 6 different faces for Blackbeard's Curse
+			let callCount = 0;
+			vi.spyOn(Math, 'random').mockImplementation(() => {
+				const values = [0, 0.17, 0.34, 0.5, 0.67, 0.84];
+				return values[callCount++ % 6];
+			});
+
+			engine.roll();
+			engine.finishRolling();
+			engine.resolveTurn();
+
+			const state = engine.getState();
+
+			// Verify Blackbeard's Curse was detected
+			const comboLog = state.gameLog.find(
+				(e) => e.type === 'combo' && e.message.includes("BLACKBEARD'S CURSE")
+			);
+			expect(comboLog).toBeDefined();
+
+			// Check turn summary doesn't say "stole" or "shot"
+			const summaryLog = state.gameLog.find((e) => e.type === 'summary');
+			expect(summaryLog).toBeDefined();
+			expect(summaryLog!.message).not.toContain('stole');
+			expect(summaryLog!.message).not.toContain('shot');
+
+			vi.restoreAllMocks();
+		});
 	});
 
 	describe('win conditions', () => {
