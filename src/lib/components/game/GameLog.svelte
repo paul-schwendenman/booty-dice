@@ -23,7 +23,7 @@
 <div class="game-log" bind:this={container}>
 	<h3>Game Log</h3>
 	<div class="entries">
-		{#each entries as entry (entry.timestamp)}
+		{#each entries as entry, index (`${entry.timestamp}-${index}`)}
 			<div class="entry entry-{entry.type}">
 				{entry.message}
 			</div>
