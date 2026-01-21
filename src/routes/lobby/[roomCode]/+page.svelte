@@ -196,6 +196,8 @@
 			{#if !isConnected}
 				<p class="hint">Connecting to server...</p>
 			{/if}
+
+			<a href="/" class="back-link">Back to Home</a>
 		</div>
 	{:else}
 		<!-- Share button -->
@@ -448,5 +450,19 @@
 
 	.share-section {
 		margin-bottom: 1.5rem;
+	}
+
+	.back-link {
+		display: block;
+		text-align: center;
+		color: #888;
+		text-decoration: none;
+		margin-top: 1rem;
+		font-size: 0.9rem;
+	}
+
+	.back-link:hover {
+		color: #d4a574;
+		text-decoration: underline;
 	}
 </style>
