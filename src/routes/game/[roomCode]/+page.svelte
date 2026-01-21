@@ -87,7 +87,7 @@
 		// If no game state, try to reconnect or redirect
 		if (!game) {
 			const session = loadSession();
-			if (session?.roomCode === roomCode.toUpperCase() && session?.playerId) {
+			if (roomCode && session?.roomCode === roomCode.toUpperCase() && session?.playerId) {
 				isReconnecting = true;
 				attemptReconnect();
 				// Give reconnection some time, then redirect if still no state

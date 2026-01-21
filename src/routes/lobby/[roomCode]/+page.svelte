@@ -81,7 +81,7 @@
 		// If we have a session but no players, try to reconnect
 		if (lobby.players.length === 0) {
 			const session = loadSession();
-			if (session?.roomCode === roomCode.toUpperCase() && session?.playerId) {
+			if (roomCode && session?.roomCode === roomCode.toUpperCase() && session?.playerId) {
 				attemptReconnect();
 			}
 		}
