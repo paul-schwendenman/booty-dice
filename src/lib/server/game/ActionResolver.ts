@@ -134,6 +134,7 @@ export class ActionResolver {
 							effects.push({
 								type: 'coins_gained',
 								targetId: currentPlayer.id,
+								sourceId: stealAction.targetPlayerId, // Mark as stolen, not from center
 								amount: stealAmount,
 								description: ''
 							});
