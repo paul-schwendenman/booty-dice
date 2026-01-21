@@ -51,11 +51,19 @@
 		const socket = getSocket();
 
 		socket.on('game:state', (state) => {
+			console.log('[Client] Received game:state:', {
+				currentPlayerIndex: state.currentPlayerIndex,
+				currentPlayerName: state.players[state.currentPlayerIndex]?.name,
+				turnPhase: state.turnPhase,
+				rollsRemaining: state.rollsRemaining,
+				socketId: socket.id
+			});
 			isReconnecting = false;
 			gameStore.set(state);
 			// Update player ID with new socket ID after reconnection
 			const session = loadSession();
 			if (session && socket.id) {
+				console.log('[Client] Updating playerStore:', { socketId: socket.id, playerName: session.playerName });
 				playerStore.setPlayer(socket.id, session.playerName, session.roomCode);
 			}
 		});
@@ -160,6 +168,24 @@
 	let canFinishRolling = $derived(myTurn && game && game.turnPhase === 'rolling' && hasRolled);
 	let needsTargetSelection = $derived(myTurn && game && game.turnPhase === 'selecting_targets' && unresolvedActions.length > 0);
 	let canEndTurn = $derived(myTurn && game && hasRolled && unresolvedActions.length === 0 && game.turnPhase !== 'rolling');
+
+	// Debug logging
+	$effect(() => {
+		if (game) {
+			console.log('[Client Debug] Game state updated:', {
+				currentPlayerIndex: game.currentPlayerIndex,
+				currentPlayerId: game.players[game.currentPlayerIndex]?.id,
+				currentPlayerName: game.players[game.currentPlayerIndex]?.name,
+				myPlayerId: player.id,
+				myPlayerName: player.name,
+				isMyTurn: myTurn,
+				turnPhase: game.turnPhase,
+				rollsRemaining: game.rollsRemaining,
+				canRoll,
+				allPlayerIds: game.players.map(p => ({ id: p.id, name: p.name, isAI: p.isAI }))
+			});
+		}
+	});
 </script>
 
 <main class="container">
