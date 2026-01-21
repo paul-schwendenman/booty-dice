@@ -286,8 +286,8 @@ export class GameEngine {
 						const targetPlayer = this.state.players.find((p) => p.id === effect.targetId);
 						const targetName = targetPlayer?.name || 'someone';
 						stolenFrom.set(targetName, (stolenFrom.get(targetName) || 0) + effect.amount);
-					} else if (effect.type === 'damage' || effect.type === 'life_lost') {
-						// From cutlass or combos
+					} else if (effect.type === 'damage') {
+						// From cutlass attacks only (combos use 'life_lost' and are already logged in the roll message)
 						const targetPlayer = this.state.players.find((p) => p.id === effect.targetId);
 						const targetName = targetPlayer?.name || 'someone';
 						attacked.set(targetName, (attacked.get(targetName) || 0) + effect.amount);
