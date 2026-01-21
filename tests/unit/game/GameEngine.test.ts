@@ -659,6 +659,63 @@ describe('GameEngine', () => {
 
 			vi.restoreAllMocks();
 		});
+
+		it("should not include 'shot' or 'damage' in turn summary for mutiny (uses life_lost, not damage)", () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Force walk_plank for mutiny (3+ needed)
+			vi.spyOn(Math, 'random').mockReturnValue(0.67);
+			engine.roll();
+
+			const state = engine.getState();
+			const comboLog = state.gameLog.find(
+				(e) => e.type === 'combo' && e.message.includes('MUTINY')
+			);
+
+			// Only proceed if we got mutiny
+			if (comboLog) {
+				engine.finishRolling();
+				engine.resolveTurn();
+
+				const finalState = engine.getState();
+				const summaryLog = finalState.gameLog.find((e) => e.type === 'summary');
+				expect(summaryLog).toBeDefined();
+				// Mutiny damage shouldn't appear as "shot" since it uses life_lost type
+				expect(summaryLog!.message).not.toContain('shot');
+				expect(summaryLog!.message).not.toContain('dealt');
+			}
+
+			vi.restoreAllMocks();
+		});
+
+		it("should not include 'stole' in turn summary for shipwreck (no sourceId)", () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Force x_marks_spot for shipwreck (3+ needed)
+			vi.spyOn(Math, 'random').mockReturnValue(0.17);
+			engine.roll();
+
+			const state = engine.getState();
+			const comboLog = state.gameLog.find(
+				(e) => e.type === 'combo' && e.message.includes('SHIPWRECK')
+			);
+
+			// Only proceed if we got shipwreck
+			if (comboLog) {
+				engine.finishRolling();
+				engine.resolveTurn();
+
+				const finalState = engine.getState();
+				const summaryLog = finalState.gameLog.find((e) => e.type === 'summary');
+				expect(summaryLog).toBeDefined();
+				// Shipwreck coin loss shouldn't appear as "stole" since it has no sourceId
+				expect(summaryLog!.message).not.toContain('stole');
+			}
+
+			vi.restoreAllMocks();
+		});
 	});
 
 	describe('win conditions', () => {
