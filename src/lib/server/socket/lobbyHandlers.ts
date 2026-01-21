@@ -6,6 +6,7 @@ import type {
 	SocketData
 } from '$lib/types/index.js';
 import type { RoomManager } from '../rooms/RoomManager.js';
+import { handleAITurn } from './gameHandlers.js';
 
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -90,6 +91,7 @@ export function setupLobbyHandlers(
 
 	socket.on('lobby:startGame', () => {
 		const roomCode = socket.data.roomCode;
+		console.log(`[lobby:startGame] Starting game for room: ${roomCode}`);
 		if (!roomCode) return;
 		if (!roomManager.isHost(roomCode, socket.id)) return;
 		if (!roomManager.canStartGame(roomCode)) return;
@@ -98,8 +100,26 @@ export function setupLobbyHandlers(
 
 		const gameState = roomManager.startGame(roomCode);
 		if (gameState) {
+			console.log(`[lobby:startGame] Game created, first player index: ${gameState.currentPlayerIndex}`);
 			setTimeout(() => {
+				console.log(`[lobby:startGame] Emitting initial game state`);
 				io.to(roomCode).emit('game:state', gameState);
+
+				// Check if the first player is AI and trigger their turn
+				const firstPlayer = gameState.players[gameState.currentPlayerIndex];
+				console.log(`[lobby:startGame] First player: ${firstPlayer.name}, isAI: ${firstPlayer.isAI}`);
+				if (firstPlayer.isAI && !firstPlayer.isEliminated) {
+					const room = roomManager.getRoom(roomCode);
+					if (room?.gameEngine) {
+						console.log(`[lobby:startGame] First player is AI, scheduling initial AI turn`);
+						setImmediate(() => {
+							console.log(`[lobby:startGame] setImmediate fired, calling handleAITurn`);
+							handleAITurn(io, roomCode, room.gameEngine!, roomManager).catch((err) => {
+								console.error('[lobby:startGame] Error during initial AI turn:', err);
+							});
+						});
+					}
+				}
 			}, 500);
 		}
 	});
