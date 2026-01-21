@@ -718,6 +718,105 @@ describe('GameEngine', () => {
 		});
 	});
 
+	describe('eliminated player effects', () => {
+		it('should not resolve cutlass attacks if the attacker dies from walk_plank during resolution', () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			// Get the current player and set them to 1 life so walk_plank kills them
+			const state = engine.getState();
+			const currentPlayerId = state.players[state.currentPlayerIndex].id;
+			const targetPlayer = state.players.find((p) => p.id !== currentPlayerId)!;
+			const targetInitialLives = targetPlayer.lives;
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.players.find(
+				(p: { id: string }) => p.id === currentPlayerId
+			).lives = 1;
+
+			// Manually set dice to have both walk_plank and cutlass
+			// walk_plank at index 0 will be processed first, killing the player
+			// cutlass at index 1 should then NOT deal damage
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.dice = [
+				{ id: 0, face: 'walk_plank', locked: false, rolling: false },
+				{ id: 1, face: 'cutlass', locked: false, rolling: false },
+				{ id: 2, face: 'doubloon', locked: false, rolling: false },
+				{ id: 3, face: 'doubloon', locked: false, rolling: false },
+				{ id: 4, face: 'doubloon', locked: false, rolling: false },
+				{ id: 5, face: 'doubloon', locked: false, rolling: false }
+			];
+
+			// Set up the pending action for cutlass targeting the other player
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.pendingActions = [
+				{ dieIndex: 1, face: 'cutlass', resolved: true, targetPlayerId: targetPlayer.id }
+			];
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.rollsRemaining = 0;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.turnPhase = 'resolving';
+
+			const result = engine.resolveTurn();
+
+			// The current player should be eliminated from walk_plank
+			expect(result.eliminations).toContain(currentPlayerId);
+
+			// The target player should NOT have lost any lives from cutlass
+			// because the attacker died before their attack could resolve
+			const finalState = engine.getState();
+			const finalTarget = finalState.players.find((p) => p.id === targetPlayer.id)!;
+			expect(finalTarget.lives).toBe(targetInitialLives);
+		});
+
+		it('should not resolve jolly_roger steals if the attacker dies from walk_plank during resolution', () => {
+			const players = createTestPlayers(2);
+			const engine = new GameEngine(players, 'TEST01');
+
+			const state = engine.getState();
+			const currentPlayerId = state.players[state.currentPlayerIndex].id;
+			const targetPlayer = state.players.find((p) => p.id !== currentPlayerId)!;
+			const targetInitialCoins = targetPlayer.doubloons;
+
+			// Set current player to 1 life so walk_plank kills them
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.players.find(
+				(p: { id: string }) => p.id === currentPlayerId
+			).lives = 1;
+
+			// Set dice to have walk_plank and jolly_roger
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.dice = [
+				{ id: 0, face: 'walk_plank', locked: false, rolling: false },
+				{ id: 1, face: 'jolly_roger', locked: false, rolling: false },
+				{ id: 2, face: 'doubloon', locked: false, rolling: false },
+				{ id: 3, face: 'doubloon', locked: false, rolling: false },
+				{ id: 4, face: 'doubloon', locked: false, rolling: false },
+				{ id: 5, face: 'doubloon', locked: false, rolling: false }
+			];
+
+			// Set up pending action for jolly_roger targeting the other player
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.pendingActions = [
+				{ dieIndex: 1, face: 'jolly_roger', resolved: true, targetPlayerId: targetPlayer.id }
+			];
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.rollsRemaining = 0;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.turnPhase = 'resolving';
+
+			const result = engine.resolveTurn();
+
+			// The current player should be eliminated
+			expect(result.eliminations).toContain(currentPlayerId);
+
+			// The target player should NOT have lost any coins from jolly_roger
+			const finalState = engine.getState();
+			const finalTarget = finalState.players.find((p) => p.id === targetPlayer.id)!;
+			expect(finalTarget.doubloons).toBe(targetInitialCoins);
+		});
+	});
+
 	describe('win conditions', () => {
 		it('should detect last standing win', () => {
 			const players = createTestPlayers(2);

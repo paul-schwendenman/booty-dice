@@ -145,6 +145,13 @@ export class GameEngine {
 			const target = this.state.players.find((p) => p.id === effect.targetId);
 			if (!target) return;
 
+			// Skip attack effects if the source player has been eliminated during this resolution
+			// (e.g., they died from walk_plank before their cutlass attacks resolve)
+			if (effect.sourceId) {
+				const source = this.state.players.find((p) => p.id === effect.sourceId);
+				if (source?.isEliminated) return;
+			}
+
 			if (effect.type === 'damage') {
 				if (target.shields > 0) {
 					target.shields--;
