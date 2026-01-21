@@ -222,7 +222,8 @@ export class GameEngine {
 		this.state.currentPlayerIndex = nextIndex;
 		this.state.turnNumber++;
 		this.state.rollsRemaining = 3;
-		this.state.dice = this.diceRoller.createFreshDice();
+		// Keep the previous player's dice visible, but unlock them all for the new player
+		this.state.dice = this.state.dice.map((die) => ({ ...die, locked: false }));
 		this.state.turnPhase = 'rolling';
 		this.state.pendingActions = [];
 
