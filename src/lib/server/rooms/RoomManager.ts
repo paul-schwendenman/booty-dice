@@ -107,6 +107,23 @@ export class RoomManager {
 		return room.gameEngine.getState();
 	}
 
+	resetGameRoom(roomCode: string): boolean {
+		const room = this.rooms.get(roomCode.toUpperCase());
+		if (!room) return false;
+
+		room.gameEngine = null;
+
+		for (const player of room.players.values()) {
+			player.doubloons = 5;
+			player.lives = 10;
+			player.shields = 0;
+			player.isEliminated = false;
+			player.isReady = player.isAI;
+		}
+
+		return true;
+	}
+
 	getRoom(code: string): Room | undefined {
 		return this.rooms.get(code.toUpperCase());
 	}

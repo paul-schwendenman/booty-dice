@@ -119,4 +119,14 @@ export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager
 			}, 500);
 		}
 	});
+
+	socket.on('lobby:resetGame', () => {
+		const roomCode = socket.data.roomCode;
+		if (!roomCode) return;
+
+		if (roomManager.resetGameRoom(roomCode)) {
+			const players = roomManager.getPlayersInRoom(roomCode);
+			io.to(roomCode).emit('lobby:state', players, roomManager.canStartGame(roomCode));
+		}
+	});
 }

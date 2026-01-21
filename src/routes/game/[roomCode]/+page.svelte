@@ -156,7 +156,10 @@
 	}
 
 	function backToLobby() {
-		goto('/');
+		const socket = getSocket();
+		socket.emit('lobby:resetGame');
+		gameStore.reset();
+		goto(`/lobby/${roomCode}`);
 	}
 
 	let unresolvedActions = $derived(getUnresolvedActions());
@@ -301,7 +304,7 @@
 		<div class="winner-content">
 			<p class="winner-name">{winnerName}</p>
 			<p class="winner-reason">wins by {winReason}!</p>
-			<Button onclick={backToLobby}>Back to Home</Button>
+			<Button onclick={backToLobby}>Play Again</Button>
 		</div>
 	</Modal>
 

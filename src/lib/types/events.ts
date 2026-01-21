@@ -13,6 +13,7 @@ export interface ClientToServerEvents {
 	'lobby:addAI': () => void;
 	'lobby:removeAI': (aiId: string) => void;
 	'lobby:startGame': () => void;
+	'lobby:resetGame': () => void;
 
 	'game:lockDice': (diceIndices: number[]) => void;
 	'game:roll': () => void;
