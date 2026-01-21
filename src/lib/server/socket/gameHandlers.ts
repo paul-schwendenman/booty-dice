@@ -143,6 +143,12 @@ function handleEndTurn(
 	gameEngine.endTurn();
 	const newState = gameEngine.getState();
 	io.to(roomCode).emit('game:state', newState);
+
+	// Don't continue if game ended during endTurn (edge case)
+	if (newState.phase === 'ended') {
+		return;
+	}
+
 	io.to(roomCode).emit('game:turnChanged', newState.currentPlayerIndex);
 
 	// Check if next player is AI
@@ -160,26 +166,43 @@ async function handleAITurn(
 ) {
 	const state = gameEngine.getState();
 
+	// Don't run AI turn if game has ended
+	if (state.phase === 'ended') {
+		return;
+	}
+
+	// Verify the current player is actually an AI and not eliminated
+	const currentPlayer = state.players[state.currentPlayerIndex];
+	if (!currentPlayer.isAI || currentPlayer.isEliminated) {
+		console.error('[handleAITurn] Called but current player is not a valid AI');
+		return;
+	}
+
 	await aiPlayer.takeTurn(state, {
 		onLockDice: (indices) => {
+			if (gameEngine.getState().phase === 'ended') return;
 			gameEngine.lockDice(indices);
 			io.to(roomCode).emit('game:state', gameEngine.getState());
 		},
 		onRoll: async () => {
+			if (gameEngine.getState().phase === 'ended') return state.dice;
 			const result = gameEngine.roll();
 			io.to(roomCode).emit('game:diceRolled', result.dice, result.combo);
 			io.to(roomCode).emit('game:state', gameEngine.getState());
 			return result.dice;
 		},
 		onFinishRolling: () => {
+			if (gameEngine.getState().phase === 'ended') return;
 			gameEngine.finishRolling();
 			io.to(roomCode).emit('game:state', gameEngine.getState());
 		},
 		onSelectTarget: (dieIndex, targetId) => {
+			if (gameEngine.getState().phase === 'ended') return;
 			gameEngine.selectTarget(dieIndex, targetId);
 			io.to(roomCode).emit('game:state', gameEngine.getState());
 		},
 		onEndTurn: () => {
+			if (gameEngine.getState().phase === 'ended') return;
 			handleEndTurn(io, roomCode, gameEngine, roomManager);
 		}
 	});

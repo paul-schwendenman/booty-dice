@@ -199,12 +199,24 @@ export class GameEngine {
 	}
 
 	endTurn(): void {
+		// Don't advance turn if game has ended
+		if (this.state.phase === 'ended') {
+			return;
+		}
+
 		// Move to next non-eliminated player
 		let nextIndex = (this.state.currentPlayerIndex + 1) % this.state.players.length;
 		let attempts = 0;
 		while (this.state.players[nextIndex].isEliminated && attempts < this.state.players.length) {
 			nextIndex = (nextIndex + 1) % this.state.players.length;
 			attempts++;
+		}
+
+		// Safety check: if we couldn't find a non-eliminated player, don't change turn
+		// This shouldn't happen if win conditions are checked properly, but guards against edge cases
+		if (this.state.players[nextIndex].isEliminated) {
+			console.error('[GameEngine] endTurn: Could not find non-eliminated player');
+			return;
 		}
 
 		this.state.currentPlayerIndex = nextIndex;
