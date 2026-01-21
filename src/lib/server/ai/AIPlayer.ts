@@ -25,8 +25,16 @@ export class AIPlayer {
 		console.log(`[AIPlayer.takeTurn] Starting turn for ${player.name}, rollsRemaining: ${rollsRemaining}`);
 		console.log(`[AIPlayer.takeTurn] Initial dice: ${currentDice.map(d => d.face).join(', ')}`);
 
-		// Rolling phase
-		let rollIteration = 0;
+		// First roll is mandatory - dice start as placeholders
+		console.log(`[AIPlayer.takeTurn] Waiting ${this.thinkDelay}ms before first roll...`);
+		await this.delay(this.thinkDelay);
+		console.log(`[AIPlayer.takeTurn] Performing mandatory first roll`);
+		currentDice = await callbacks.onRoll();
+		console.log(`[AIPlayer.takeTurn] First roll complete: ${currentDice.map(d => d.face).join(', ')}`);
+		rollsRemaining--;
+
+		// Subsequent rolls are optional
+		let rollIteration = 1;
 		while (rollsRemaining > 0) {
 			rollIteration++;
 			console.log(`[AIPlayer.takeTurn] Roll iteration ${rollIteration}, rollsRemaining: ${rollsRemaining}`);
