@@ -8,6 +8,7 @@ import type {
 import { RoomManager } from '../rooms/RoomManager.js';
 import { setupLobbyHandlers } from './lobbyHandlers.js';
 import { setupGameHandlers } from './gameHandlers.js';
+import { setupBrowseHandlers, broadcastLobbyUpdate } from './browseHandlers.js';
 
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
@@ -19,6 +20,7 @@ export function setupSocketHandlers(io: AppServer) {
 
 		setupLobbyHandlers(io, socket, roomManager);
 		setupGameHandlers(io, socket, roomManager);
+		setupBrowseHandlers(io, socket, roomManager);
 
 		socket.on('disconnect', () => {
 			console.log(`Client disconnected: ${socket.id}`);
@@ -33,6 +35,7 @@ export function setupSocketHandlers(io: AppServer) {
 						roomManager.canStartGame(result.roomCode)
 					);
 				}
+				broadcastLobbyUpdate(io, roomManager);
 			}
 		});
 	});

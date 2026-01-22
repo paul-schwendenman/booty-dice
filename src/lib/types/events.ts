@@ -1,6 +1,7 @@
 import type { Die, ComboType } from './dice.js';
 import type { Player } from './player.js';
 import type { GameState, LogEntry, ResolvedEffect } from './game.js';
+import type { LobbyInfo } from './lobby.js';
 
 export interface ClientToServerEvents {
 	'lobby:create': (playerName: string, callback: (roomCode: string) => void) => void;
@@ -22,6 +23,9 @@ export interface ClientToServerEvents {
 	'game:endTurn': () => void;
 
 	'player:reconnect': (roomCode: string, playerId: string) => void;
+
+	'browse:subscribe': () => void;
+	'browse:unsubscribe': () => void;
 }
 
 export interface ServerToClientEvents {
@@ -39,6 +43,8 @@ export interface ServerToClientEvents {
 	'game:log': (entry: LogEntry) => void;
 
 	error: (message: string) => void;
+
+	'browse:lobbies': (lobbies: LobbyInfo[]) => void;
 }
 
 export interface InterServerEvents {

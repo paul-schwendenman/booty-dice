@@ -7,6 +7,7 @@ import type {
 } from '$lib/types/index.js';
 import type { RoomManager } from '../rooms/RoomManager.js';
 import { handleAITurn } from './gameHandlers.js';
+import { broadcastLobbyUpdate } from './browseHandlers.js';
 
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -22,6 +23,7 @@ export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager
 
 		const players = roomManager.getPlayersInRoom(roomCode);
 		io.to(roomCode).emit('lobby:state', players, false);
+		broadcastLobbyUpdate(io, roomManager);
 	});
 
 	socket.on('lobby:join', (roomCode, playerName, callback) => {
@@ -45,6 +47,7 @@ export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager
 			io.to(normalizedCode).emit('lobby:playerJoined', player);
 		}
 		io.to(normalizedCode).emit('lobby:state', players, roomManager.canStartGame(normalizedCode));
+		broadcastLobbyUpdate(io, roomManager);
 	});
 
 	socket.on('lobby:ready', (isReady) => {
@@ -66,6 +69,7 @@ export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager
 			io.to(roomCode).emit('lobby:playerJoined', ai);
 			const players = roomManager.getPlayersInRoom(roomCode);
 			io.to(roomCode).emit('lobby:state', players, roomManager.canStartGame(roomCode));
+			broadcastLobbyUpdate(io, roomManager);
 		}
 	});
 
@@ -78,6 +82,7 @@ export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager
 			io.to(roomCode).emit('lobby:playerLeft', aiId);
 			const players = roomManager.getPlayersInRoom(roomCode);
 			io.to(roomCode).emit('lobby:state', players, roomManager.canStartGame(roomCode));
+			broadcastLobbyUpdate(io, roomManager);
 		}
 	});
 
@@ -92,6 +97,7 @@ export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager
 
 		const gameState = roomManager.startGame(roomCode);
 		if (gameState) {
+			broadcastLobbyUpdate(io, roomManager);
 			console.log(
 				`[lobby:startGame] Game created, first player index: ${gameState.currentPlayerIndex}`
 			);

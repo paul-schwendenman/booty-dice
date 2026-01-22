@@ -129,6 +129,8 @@
 			/>
 			<Button onclick={joinRoom} variant="secondary" disabled={!isConnected}>Join</Button>
 		</div>
+
+		<a href="/browse" class="browse-link">Browse Active Lobbies</a>
 	</div>
 
 	{#if !isConnected}
@@ -233,5 +235,19 @@
 		text-align: center;
 		color: #888;
 		margin-top: 2rem;
+	}
+
+	.browse-link {
+		display: block;
+		text-align: center;
+		color: #888;
+		text-decoration: none;
+		margin-top: 1.5rem;
+		font-size: 0.9rem;
+	}
+
+	.browse-link:hover {
+		color: #d4a574;
+		text-decoration: underline;
 	}
 </style>

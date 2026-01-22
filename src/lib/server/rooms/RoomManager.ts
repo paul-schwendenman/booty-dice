@@ -1,4 +1,4 @@
-import type { Player, GameState } from '$lib/types/index.js';
+import type { Player, GameState, LobbyInfo } from '$lib/types/index.js';
 import { createPlayer } from '$lib/types/index.js';
 import { GameEngine } from '../game/GameEngine.js';
 import { generateRoomCode } from '$lib/utils/roomCode.js';
@@ -198,5 +198,29 @@ export class RoomManager {
 		}
 
 		return true;
+	}
+
+	getActiveLobbies(): LobbyInfo[] {
+		const lobbies: LobbyInfo[] = [];
+
+		for (const room of this.rooms.values()) {
+			// Only include rooms where game hasn't started
+			if (room.gameEngine !== null) continue;
+
+			const players = [...room.players.values()];
+			const host = players.find((p) => p.id === room.hostId);
+
+			lobbies.push({
+				code: room.code,
+				hostName: host?.name ?? 'Unknown',
+				playerCount: players.length,
+				maxPlayers: 6,
+				players: players.map((p) => ({ name: p.name, isAI: p.isAI })),
+				createdAt: room.createdAt
+			});
+		}
+
+		// Sort by newest first
+		return lobbies.sort((a, b) => b.createdAt - a.createdAt);
 	}
 }
