@@ -82,11 +82,16 @@
 		const socket = getSocket();
 		const normalizedCode = joinCode.toUpperCase();
 
-		socket.emit('lobby:join', normalizedCode, playerName, (success, errorMsg) => {
+		socket.emit('lobby:join', normalizedCode, playerName, (success, errorMsg, isReconnect) => {
 			if (success) {
 				playerStore.setPlayer(socket.id ?? '', playerName, normalizedCode);
-				lobbyStore.setRoom(normalizedCode, false);
-				goto(`/lobby/${normalizedCode}`);
+				if (isReconnect) {
+					// Reconnecting to in-progress game - game:state event will trigger navigation
+					// Just update the store, navigation handled by game:state handler
+				} else {
+					lobbyStore.setRoom(normalizedCode, false);
+					goto(`/lobby/${normalizedCode}`);
+				}
 			} else {
 				error = errorMsg || 'Failed to join room';
 			}

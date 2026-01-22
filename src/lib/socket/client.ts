@@ -25,8 +25,11 @@ export function getSocket(): Socket<ServerToClientEvents, ClientToServerEvents> 
 			reconnectAttempted = true;
 
 			const session = loadSession();
-			if (session && session.roomCode && session.playerId) {
-				socket?.emit('player:reconnect', session.roomCode, session.playerId);
+			if (session && session.roomCode && session.playerName) {
+				// Use lobby:join with playerName to reconnect - server will match by name
+				socket?.emit('lobby:join', session.roomCode, session.playerName, () => {
+					// Callback handled by page components
+				});
 			}
 		});
 	}
@@ -37,8 +40,11 @@ export function getSocket(): Socket<ServerToClientEvents, ClientToServerEvents> 
 export function attemptReconnect(): void {
 	if (!browser || !socket) return;
 	const session = loadSession();
-	if (session && session.roomCode && session.playerId) {
-		socket.emit('player:reconnect', session.roomCode, session.playerId);
+	if (session && session.roomCode && session.playerName) {
+		// Use lobby:join with playerName to reconnect - server will match by name
+		socket.emit('lobby:join', session.roomCode, session.playerName, () => {
+			// Callback handled by page components
+		});
 	}
 }
 

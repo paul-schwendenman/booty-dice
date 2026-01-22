@@ -44,9 +44,25 @@ export class RoomManager {
 		return code;
 	}
 
-	joinRoom(code: string, socketId: string, name: string): { success: boolean; error?: string } {
+	joinRoom(
+		code: string,
+		socketId: string,
+		name: string
+	): { success: boolean; error?: string; isReconnect?: boolean } {
 		const room = this.rooms.get(code.toUpperCase());
 		if (!room) return { success: false, error: 'Room not found' };
+
+		// Check if this is a reconnection attempt for a disconnected player
+		const disconnectedPlayer = this.findDisconnectedPlayerByName(code, name);
+		if (disconnectedPlayer) {
+			// Reconnect the player
+			const oldPlayerId = disconnectedPlayer.id;
+			if (this.handleReconnect(code, oldPlayerId, socketId)) {
+				return { success: true, isReconnect: true };
+			}
+		}
+
+		// Regular join - check constraints
 		if (room.players.size >= 6) return { success: false, error: 'Room is full' };
 		if (room.gameEngine) return { success: false, error: 'Game already in progress' };
 
@@ -184,7 +200,7 @@ export class RoomManager {
 		const player = room.players.get(oldPlayerId);
 		if (!player || player.isConnected) return false;
 
-		// Update player ID
+		// Update player ID in room
 		room.players.delete(oldPlayerId);
 		player.id = newSocketId;
 		player.isConnected = true;
@@ -197,6 +213,23 @@ export class RoomManager {
 			room.hostId = newSocketId;
 		}
 
+		// Also update player ID in GameEngine if game is in progress
+		if (room.gameEngine) {
+			room.gameEngine.updatePlayerId(oldPlayerId, newSocketId);
+		}
+
 		return true;
+	}
+
+	findDisconnectedPlayerByName(roomCode: string, playerName: string): Player | null {
+		const room = this.rooms.get(roomCode.toUpperCase());
+		if (!room) return null;
+
+		for (const player of room.players.values()) {
+			if (player.name === playerName && !player.isConnected && !player.isAI) {
+				return player;
+			}
+		}
+		return null;
 	}
 }

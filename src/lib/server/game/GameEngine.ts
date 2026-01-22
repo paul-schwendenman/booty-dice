@@ -44,6 +44,15 @@ export class GameEngine {
 		return { ...this.state, players: this.state.players.map((p) => ({ ...p })) };
 	}
 
+	updatePlayerId(oldId: string, newId: string): boolean {
+		const playerIndex = this.state.players.findIndex((p) => p.id === oldId);
+		if (playerIndex === -1) return false;
+
+		this.state.players[playerIndex].id = newId;
+		this.state.players[playerIndex].isConnected = true;
+		return true;
+	}
+
 	getCurrentPlayer(): Player {
 		return this.state.players[this.state.currentPlayerIndex];
 	}

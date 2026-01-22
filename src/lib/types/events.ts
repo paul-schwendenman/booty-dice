@@ -7,7 +7,7 @@ export interface ClientToServerEvents {
 	'lobby:join': (
 		roomCode: string,
 		playerName: string,
-		callback: (success: boolean, error?: string) => void
+		callback: (success: boolean, error?: string, isReconnect?: boolean) => void
 	) => void;
 	'lobby:ready': (isReady: boolean) => void;
 	'lobby:addAI': () => void;

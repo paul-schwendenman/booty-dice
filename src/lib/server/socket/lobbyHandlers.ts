@@ -37,6 +37,26 @@ export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager
 		socket.data.roomCode = normalizedCode;
 		socket.data.playerId = socket.id;
 		socket.data.playerName = playerName;
+
+		// If this is a reconnection, send game state instead of lobby state
+		if (result.isReconnect) {
+			callback(true, undefined, true);
+			const room = roomManager.getRoom(normalizedCode);
+			if (room?.gameEngine) {
+				// Send game state to the reconnecting player
+				socket.emit('game:state', room.gameEngine.getState());
+			} else {
+				// Game ended while disconnected, send lobby state
+				const players = roomManager.getPlayersInRoom(normalizedCode);
+				io.to(normalizedCode).emit(
+					'lobby:state',
+					players,
+					roomManager.canStartGame(normalizedCode)
+				);
+			}
+			return;
+		}
+
 		callback(true);
 
 		const players = roomManager.getPlayersInRoom(normalizedCode);
