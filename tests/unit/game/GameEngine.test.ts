@@ -730,9 +730,7 @@ describe('GameEngine', () => {
 			const targetInitialLives = targetPlayer.lives;
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.players.find(
-				(p: { id: string }) => p.id === currentPlayerId
-			).lives = 1;
+			(engine as any).state.players.find((p: { id: string }) => p.id === currentPlayerId).lives = 1;
 
 			// Manually set dice to have both walk_plank and cutlass
 			// walk_plank at index 0 will be processed first, killing the player
@@ -780,9 +778,7 @@ describe('GameEngine', () => {
 
 			// Set current player to 1 life so walk_plank kills them
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.players.find(
-				(p: { id: string }) => p.id === currentPlayerId
-			).lives = 1;
+			(engine as any).state.players.find((p: { id: string }) => p.id === currentPlayerId).lives = 1;
 
 			// Set dice to have walk_plank and jolly_roger
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
