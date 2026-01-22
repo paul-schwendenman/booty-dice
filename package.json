@@ -18,7 +18,8 @@
 		"test:e2e": "playwright test",
 		"test:e2e:ui": "playwright test --ui",
 		"test:clients": "npx tsx scripts/test-clients.ts",
-		"test:browsers": "./scripts/open-browsers.sh"
+		"test:browsers": "./scripts/open-browsers.sh",
+		"prepare": "husky"
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.39.2",
@@ -36,6 +37,7 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.14.0",
 		"globals": "^17.0.0",
+		"husky": "^9.1.7",
 		"jsdom": "^27.4.0",
 		"prettier": "^3.8.0",
 		"prettier-plugin-svelte": "^3.4.1",

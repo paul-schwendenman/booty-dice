@@ -121,7 +121,19 @@ Components are in `src/lib/components/`. Use Svelte 5 runes:
 
 ```bash
 npm run check          # TypeScript + Svelte checks
+npm run test:run       # Unit tests
 npm run dev            # Manual testing locally
 ```
 
 Open multiple browser tabs to test multiplayer. Use incognito for separate sessions.
+
+## CI Requirements
+
+Before pushing changes, ensure all CI checks pass. Run `/ci` to execute the full CI pipeline locally:
+
+1. `npm run lint` - Prettier formatting + ESLint
+2. `npm run check` - TypeScript + Svelte type checking
+3. `npm run build` - Production build
+4. `npm run test:run` - Unit tests
+
+A pre-commit hook runs `lint` and `check` automatically on commit. If formatting fails, run `npm run format` to auto-fix.
