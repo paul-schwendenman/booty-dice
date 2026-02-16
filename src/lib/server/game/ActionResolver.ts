@@ -1,11 +1,5 @@
-import type {
-	Die,
-	DiceFace,
-	ComboType,
-	Player,
-	PendingAction,
-	ResolvedEffect
-} from '$lib/types/index.js';
+import type { Die, Player, PendingAction, ResolvedEffect } from '$lib/types/index.js';
+import { detectCombo } from './comboDetector.js';
 
 export class ActionResolver {
 	resolve(
@@ -18,7 +12,7 @@ export class ActionResolver {
 		const faces = dice.map((d) => d.face);
 		const otherPlayers = allPlayers.filter((p) => p.id !== currentPlayer.id && !p.isEliminated);
 
-		const combo = this.detectCombo(faces);
+		const combo = detectCombo(faces);
 
 		// Handle Blackbeard's Curse - overrides everything
 		if (combo === 'blackbeards_curse') {
@@ -153,14 +147,5 @@ export class ActionResolver {
 		});
 
 		return effects;
-	}
-
-	private detectCombo(faces: DiceFace[]): ComboType {
-		// Blackbeard's Curse: all 6 different faces (one of each)
-		const uniqueFaces = new Set(faces);
-		if (uniqueFaces.size === 6) return 'blackbeards_curse';
-		if (faces.filter((f) => f === 'walk_plank').length >= 3) return 'mutiny';
-		if (faces.filter((f) => f === 'x_marks_spot').length >= 3) return 'shipwreck';
-		return null;
 	}
 }

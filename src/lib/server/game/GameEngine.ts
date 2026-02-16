@@ -10,18 +10,20 @@ import type {
 } from '$lib/types/index.js';
 import { DiceRoller } from './DiceRoller.js';
 import { ActionResolver } from './ActionResolver.js';
+import { fisherYatesShuffle } from './shuffle.js';
 
 export class GameEngine {
 	private state: GameState;
 	private diceRoller: DiceRoller;
 	private actionResolver: ActionResolver;
+	private lastBroadcastLogIndex = 0;
 
 	constructor(players: Player[], roomCode: string) {
 		this.diceRoller = new DiceRoller();
 		this.actionResolver = new ActionResolver();
 
 		// Shuffle player order
-		const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+		const shuffledPlayers = fisherYatesShuffle(players);
 
 		this.state = {
 			roomCode,
@@ -42,6 +44,16 @@ export class GameEngine {
 
 	getState(): GameState {
 		return { ...this.state, players: this.state.players.map((p) => ({ ...p })) };
+	}
+
+	getNewLogEntries(): LogEntry[] {
+		const newEntries = this.state.gameLog.slice(this.lastBroadcastLogIndex);
+		this.lastBroadcastLogIndex = this.state.gameLog.length;
+		return newEntries;
+	}
+
+	getStateForBroadcast(): GameState {
+		return { ...this.getState(), gameLog: [] };
 	}
 
 	getCurrentPlayer(): Player {

@@ -47,6 +47,10 @@
 	onMount(() => {
 		const socket = getSocket();
 
+		socket.on('game:log', (entry) => {
+			gameStore.addLogEntry(entry);
+		});
+
 		socket.on('game:state', (state) => {
 			console.log('[Client] Received game:state:', {
 				currentPlayerIndex: state.currentPlayerIndex,
@@ -56,6 +60,11 @@
 				socketId: socket.id
 			});
 			isReconnecting = false;
+
+			// Preserve existing log when broadcast sends empty gameLog
+			if (state.gameLog.length === 0 && game?.gameLog?.length) {
+				state = { ...state, gameLog: game.gameLog };
+			}
 			gameStore.set(state);
 			// Update player ID with new socket ID after reconnection
 			const session = loadSession();
@@ -99,6 +108,7 @@
 		}
 
 		return () => {
+			socket.off('game:log');
 			socket.off('game:state');
 			socket.off('game:diceRolled');
 			socket.off('game:playerEliminated');

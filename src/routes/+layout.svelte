@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { browser } from '$app/environment';
+	import ConnectionStatus from '$lib/components/ui/ConnectionStatus.svelte';
 
 	interface Props {
 		children: Snippet;
@@ -9,6 +11,9 @@
 </script>
 
 <div class="app">
+	{#if browser}
+		<ConnectionStatus />
+	{/if}
 	{@render children()}
 </div>
 

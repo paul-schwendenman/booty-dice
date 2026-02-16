@@ -30,6 +30,15 @@ export const DICE_FACES: DiceFace[] = [
 	'shield'
 ];
 
+export const FACE_NAMES: Record<DiceFace, string> = {
+	doubloon: 'Doubloon',
+	x_marks_spot: 'X Marks the Spot',
+	jolly_roger: 'Jolly Roger',
+	cutlass: 'Cutlass',
+	walk_plank: 'Walk the Plank',
+	shield: 'Shield'
+};
+
 export const FACE_EMOJI: Record<DiceFace, string> = {
 	doubloon: '\u{1FA99}',
 	x_marks_spot: '\u274C',

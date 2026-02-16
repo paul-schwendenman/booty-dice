@@ -68,6 +68,13 @@
 			lobbyStore.removePlayer(playerId);
 		});
 
+		socket.on('lobby:hostChanged', (newHostId: string) => {
+			const isNewHost = newHostId === socket.id;
+			if (roomCode) {
+				lobbyStore.setRoom(roomCode, isNewHost);
+			}
+		});
+
 		socket.on('lobby:gameStarting', () => {
 			// Game is starting
 		});
@@ -91,6 +98,7 @@
 			socket.off('lobby:state');
 			socket.off('lobby:playerJoined');
 			socket.off('lobby:playerLeft');
+			socket.off('lobby:hostChanged');
 			socket.off('lobby:gameStarting');
 			socket.off('game:state');
 		};

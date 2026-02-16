@@ -1,5 +1,6 @@
 import type { Die, DiceFace, ComboType, DiceResult } from '$lib/types/index.js';
 import { DICE_FACES } from '$lib/types/index.js';
+import { detectCombo } from './comboDetector.js';
 
 export class DiceRoller {
 	createFreshDice(): Die[] {
@@ -21,28 +22,10 @@ export class DiceRoller {
 			};
 		});
 
-		const combo = this.detectCombo(newDice);
+		const combo = detectCombo(newDice.map((d) => d.face));
 		const bonusCount = this.countBonus(newDice, combo);
 
 		return { dice: newDice, combo, bonusCount };
-	}
-
-	private detectCombo(dice: Die[]): ComboType {
-		const faces = dice.map((d) => d.face);
-
-		// Blackbeard's Curse: must have all 6 different faces (one of each)
-		const uniqueFaces = new Set(faces);
-		if (uniqueFaces.size === 6) return 'blackbeards_curse';
-
-		// Mutiny: 3+ Walk the Planks
-		const plankCount = faces.filter((f) => f === 'walk_plank').length;
-		if (plankCount >= 3) return 'mutiny';
-
-		// Shipwreck: 3+ X Marks the Spot
-		const xCount = faces.filter((f) => f === 'x_marks_spot').length;
-		if (xCount >= 3) return 'shipwreck';
-
-		return null;
 	}
 
 	private countBonus(dice: Die[], combo: ComboType): number {

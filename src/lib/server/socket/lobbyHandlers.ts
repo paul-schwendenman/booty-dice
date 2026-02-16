@@ -7,17 +7,24 @@ import type {
 } from '$lib/types/index.js';
 import type { RoomManager } from '../rooms/RoomManager.js';
 import { handleAITurn } from './gameHandlers.js';
+import { validatePlayerName } from '../validation.js';
 
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
 export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager: RoomManager) {
 	socket.on('lobby:create', (playerName, callback) => {
-		const roomCode = roomManager.createRoom(socket.id, playerName);
+		const nameResult = validatePlayerName(playerName);
+		if (!nameResult.valid) {
+			callback('');
+			return;
+		}
+
+		const roomCode = roomManager.createRoom(socket.id, nameResult.name);
 		socket.join(roomCode);
 		socket.data.roomCode = roomCode;
 		socket.data.playerId = socket.id;
-		socket.data.playerName = playerName;
+		socket.data.playerName = nameResult.name;
 		callback(roomCode);
 
 		const players = roomManager.getPlayersInRoom(roomCode);
@@ -25,7 +32,13 @@ export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager
 	});
 
 	socket.on('lobby:join', (roomCode, playerName, callback) => {
-		const result = roomManager.joinRoom(roomCode, socket.id, playerName);
+		const nameResult = validatePlayerName(playerName);
+		if (!nameResult.valid) {
+			callback(false, nameResult.error);
+			return;
+		}
+
+		const result = roomManager.joinRoom(roomCode, socket.id, nameResult.name);
 
 		if (!result.success) {
 			callback(false, result.error);
@@ -36,7 +49,7 @@ export function setupLobbyHandlers(io: AppServer, socket: AppSocket, roomManager
 		socket.join(normalizedCode);
 		socket.data.roomCode = normalizedCode;
 		socket.data.playerId = socket.id;
-		socket.data.playerName = playerName;
+		socket.data.playerName = nameResult.name;
 		callback(true);
 
 		const players = roomManager.getPlayersInRoom(normalizedCode);

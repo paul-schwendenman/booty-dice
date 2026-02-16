@@ -28,6 +28,7 @@ export interface ServerToClientEvents {
 	'lobby:state': (players: Player[], canStart: boolean) => void;
 	'lobby:playerJoined': (player: Player) => void;
 	'lobby:playerLeft': (playerId: string) => void;
+	'lobby:hostChanged': (newHostId: string) => void;
 	'lobby:gameStarting': () => void;
 
 	'game:state': (state: GameState) => void;

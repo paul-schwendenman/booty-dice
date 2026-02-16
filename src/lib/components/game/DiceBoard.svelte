@@ -11,7 +11,7 @@
 	let { dice, canSelect = false, onToggleLock }: Props = $props();
 </script>
 
-<div class="dice-board">
+<div class="dice-board" role="group" aria-label="Dice">
 	{#each dice as die, index (die.id)}
 		<Dice {die} selectable={canSelect} onclick={() => onToggleLock?.(index)} />
 	{/each}

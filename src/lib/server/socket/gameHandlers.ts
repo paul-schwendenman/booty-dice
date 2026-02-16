@@ -8,6 +8,7 @@ import type {
 import type { RoomManager } from '../rooms/RoomManager.js';
 import type { GameEngine } from '../game/GameEngine.js';
 import { AIPlayer } from '../ai/AIPlayer.js';
+import { validateDiceIndices } from '../validation.js';
 
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
@@ -15,8 +16,22 @@ type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerE
 const aiPlayer = new AIPlayer();
 const AI_TURN_TIMEOUT = 30_000;
 
+function broadcastState(io: AppServer, roomCode: string, gameEngine: GameEngine) {
+	const newEntries = gameEngine.getNewLogEntries();
+	for (const entry of newEntries) {
+		io.to(roomCode).emit('game:log', entry);
+	}
+	io.to(roomCode).emit('game:state', gameEngine.getStateForBroadcast());
+}
+
 export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager: RoomManager) {
 	socket.on('game:lockDice', (diceIndices) => {
+		const diceResult = validateDiceIndices(diceIndices);
+		if (!diceResult.valid) {
+			socket.emit('error', diceResult.error);
+			return;
+		}
+
 		const room = roomManager.getRoomByPlayer(socket.id);
 		if (!room?.gameEngine) return;
 
@@ -24,8 +39,8 @@ export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager:
 		if (state.players[state.currentPlayerIndex].id !== socket.id) return;
 		if (state.turnPhase !== 'rolling') return;
 
-		room.gameEngine.lockDice(diceIndices);
-		io.to(room.code).emit('game:state', room.gameEngine.getState());
+		room.gameEngine.lockDice(diceResult.indices);
+		broadcastState(io, room.code, room.gameEngine);
 	});
 
 	socket.on('game:roll', () => {
@@ -39,7 +54,7 @@ export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager:
 		try {
 			const result = room.gameEngine.roll();
 			io.to(room.code).emit('game:diceRolled', result.dice, result.combo);
-			io.to(room.code).emit('game:state', room.gameEngine.getState());
+			broadcastState(io, room.code, room.gameEngine);
 		} catch {
 			socket.emit('error', 'Cannot roll - no rolls remaining');
 		}
@@ -72,7 +87,7 @@ export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager:
 		room.gameEngine.finishRolling();
 		const newState = room.gameEngine.getState();
 		console.log('[game:finishRolling] after:', newState.turnPhase);
-		io.to(room.code).emit('game:state', newState);
+		broadcastState(io, room.code, room.gameEngine);
 	});
 
 	socket.on('game:selectTarget', (dieIndex, targetPlayerId) => {
@@ -85,7 +100,7 @@ export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager:
 
 		try {
 			room.gameEngine.selectTarget(dieIndex, targetPlayerId);
-			io.to(room.code).emit('game:state', room.gameEngine.getState());
+			broadcastState(io, room.code, room.gameEngine);
 		} catch {
 			socket.emit('error', 'Invalid target selection');
 		}
@@ -109,23 +124,26 @@ export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager:
 	});
 
 	socket.on('player:reconnect', (roomCode, playerId) => {
-		if (roomManager.handleReconnect(roomCode, playerId, socket.id)) {
-			socket.join(roomCode.toUpperCase());
-			socket.data.roomCode = roomCode.toUpperCase();
-			socket.data.playerId = socket.id;
+		if (!roomManager.handleReconnect(roomCode, playerId, socket.id)) {
+			socket.emit('error', 'Failed to reconnect to room');
+			return;
+		}
 
-			const room = roomManager.getRoom(roomCode);
-			if (room?.gameEngine) {
-				socket.emit('game:state', room.gameEngine.getState());
-			} else {
-				const players = roomManager.getPlayersInRoom(roomCode.toUpperCase());
-				socket.emit('lobby:state', players, roomManager.canStartGame(roomCode.toUpperCase()));
-			}
+		socket.join(roomCode.toUpperCase());
+		socket.data.roomCode = roomCode.toUpperCase();
+		socket.data.playerId = socket.id;
+
+		const room = roomManager.getRoom(roomCode);
+		if (room?.gameEngine) {
+			socket.emit('game:state', room.gameEngine.getState());
+		} else {
+			const players = roomManager.getPlayersInRoom(roomCode.toUpperCase());
+			socket.emit('lobby:state', players, roomManager.canStartGame(roomCode.toUpperCase()));
 		}
 	});
 }
 
-function handleEndTurn(
+export function handleEndTurn(
 	io: AppServer,
 	roomCode: string,
 	gameEngine: GameEngine,
@@ -153,7 +171,7 @@ function handleEndTurn(
 		const winner = state.players.find((p) => p.id === resolution.winner);
 		const reason = winner && winner.doubloons >= 25 ? 'doubloons' : 'last_standing';
 		io.to(roomCode).emit('game:ended', resolution.winner, reason);
-		io.to(roomCode).emit('game:state', state);
+		broadcastState(io, roomCode, gameEngine);
 		return;
 	}
 
@@ -164,7 +182,7 @@ function handleEndTurn(
 	console.log(
 		`[handleEndTurn] New turn - player index: ${newState.currentPlayerIndex}, phase: ${newState.phase}, turnPhase: ${newState.turnPhase}`
 	);
-	io.to(roomCode).emit('game:state', newState);
+	broadcastState(io, roomCode, gameEngine);
 
 	// Don't continue if game ended during endTurn (edge case)
 	if (newState.phase === 'ended') {
@@ -237,7 +255,7 @@ export async function handleAITurn(
 						return;
 					}
 					gameEngine.lockDice(indices);
-					io.to(roomCode).emit('game:state', gameEngine.getState());
+					broadcastState(io, roomCode, gameEngine);
 				},
 				onRoll: async () => {
 					console.log(`[handleAITurn:onRoll] Rolling dice`);
@@ -251,7 +269,7 @@ export async function handleAITurn(
 							`[handleAITurn:onRoll] Roll result: ${result.dice.map((d) => d.face).join(', ')}, combo: ${result.combo || 'none'}`
 						);
 						io.to(roomCode).emit('game:diceRolled', result.dice, result.combo);
-						io.to(roomCode).emit('game:state', gameEngine.getState());
+						broadcastState(io, roomCode, gameEngine);
 						return result.dice;
 					} catch (err) {
 						console.error(`[handleAITurn:onRoll] Error rolling:`, err);
@@ -269,7 +287,7 @@ export async function handleAITurn(
 					console.log(
 						`[handleAITurn:onFinishRolling] New turnPhase: ${newState.turnPhase}, pendingActions: ${newState.pendingActions.length}`
 					);
-					io.to(roomCode).emit('game:state', newState);
+					broadcastState(io, roomCode, gameEngine);
 				},
 				onSelectTarget: (dieIndex, targetId) => {
 					console.log(
@@ -280,7 +298,7 @@ export async function handleAITurn(
 						return;
 					}
 					gameEngine.selectTarget(dieIndex, targetId);
-					io.to(roomCode).emit('game:state', gameEngine.getState());
+					broadcastState(io, roomCode, gameEngine);
 				},
 				onEndTurn: () => {
 					console.log(`[handleAITurn:onEndTurn] AI ending turn`);

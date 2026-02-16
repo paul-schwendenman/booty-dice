@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Die } from '$lib/types/index.js';
-	import { FACE_EMOJI } from '$lib/types/index.js';
+	import { FACE_EMOJI, FACE_NAMES } from '$lib/types/index.js';
 
 	interface Props {
 		die: Die;
@@ -17,11 +17,14 @@
 	class:rolling={die.rolling}
 	class:selectable
 	disabled={!selectable}
+	aria-label="{FACE_NAMES[die.face]} die{die.locked ? ', locked' : ''}"
+	aria-pressed={die.locked}
+	title={FACE_NAMES[die.face]}
 	{onclick}
 >
-	<span class="face">{FACE_EMOJI[die.face]}</span>
+	<span class="face" aria-hidden="true">{FACE_EMOJI[die.face]}</span>
 	{#if die.locked}
-		<span class="lock-indicator">🔒</span>
+		<span class="lock-indicator" aria-hidden="true">🔒</span>
 	{/if}
 </button>
 

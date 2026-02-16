@@ -233,6 +233,114 @@ describe('RoomManager', () => {
 		});
 	});
 
+	describe('handleDisconnect', () => {
+		it('should remove player from lobby', () => {
+			const roomCode = roomManager.createRoom('socket-1', 'Captain Jack');
+			roomManager.joinRoom(roomCode, 'socket-2', 'Blackbeard');
+
+			roomManager.handleDisconnect('socket-2');
+
+			expect(roomManager.getPlayersInRoom(roomCode)).toHaveLength(1);
+		});
+
+		it('should return wasHost true when host disconnects', () => {
+			const roomCode = roomManager.createRoom('socket-1', 'Captain Jack');
+			roomManager.joinRoom(roomCode, 'socket-2', 'Blackbeard');
+
+			const result = roomManager.handleDisconnect('socket-1');
+
+			expect(result?.wasHost).toBe(true);
+		});
+
+		it('should reassign host when host disconnects in lobby', () => {
+			const roomCode = roomManager.createRoom('socket-1', 'Captain Jack');
+			roomManager.joinRoom(roomCode, 'socket-2', 'Blackbeard');
+
+			roomManager.handleDisconnect('socket-1');
+
+			expect(roomManager.isHost(roomCode, 'socket-2')).toBe(true);
+		});
+
+		it('should mark player as disconnected during game instead of removing', () => {
+			const roomCode = roomManager.createRoom('socket-1', 'Captain Jack');
+			roomManager.setPlayerReady('socket-1', true);
+			roomManager.addAIPlayer(roomCode);
+			roomManager.startGame(roomCode);
+
+			roomManager.handleDisconnect('socket-1');
+
+			// Player should still be in the room but marked disconnected
+			const players = roomManager.getPlayersInRoom(roomCode);
+			const disconnectedPlayer = players.find((p) => p.id === 'socket-1');
+			expect(disconnectedPlayer).toBeDefined();
+			expect(disconnectedPlayer?.isConnected).toBe(false);
+		});
+
+		it('should clean up room when all humans disconnect', () => {
+			const roomCode = roomManager.createRoom('socket-1', 'Captain Jack');
+			roomManager.addAIPlayer(roomCode);
+
+			roomManager.handleDisconnect('socket-1');
+
+			expect(roomManager.getRoom(roomCode)).toBeUndefined();
+		});
+
+		it('should return null for unknown socket', () => {
+			const result = roomManager.handleDisconnect('unknown-socket');
+			expect(result).toBeNull();
+		});
+	});
+
+	describe('handleReconnect', () => {
+		it('should allow reconnecting to a game', () => {
+			const roomCode = roomManager.createRoom('socket-1', 'Captain Jack');
+			roomManager.setPlayerReady('socket-1', true);
+			roomManager.addAIPlayer(roomCode);
+			roomManager.startGame(roomCode);
+
+			// Disconnect
+			roomManager.handleDisconnect('socket-1');
+
+			// Reconnect with new socket
+			const success = roomManager.handleReconnect(roomCode, 'socket-1', 'socket-1-new');
+			expect(success).toBe(true);
+
+			// Player should be connected again
+			const players = roomManager.getPlayersInRoom(roomCode);
+			const reconnected = players.find((p) => p.id === 'socket-1-new');
+			expect(reconnected).toBeDefined();
+			expect(reconnected?.isConnected).toBe(true);
+		});
+
+		it('should fail for non-existent room', () => {
+			const success = roomManager.handleReconnect('NOTREAL', 'socket-1', 'socket-2');
+			expect(success).toBe(false);
+		});
+
+		it('should fail for connected player', () => {
+			const roomCode = roomManager.createRoom('socket-1', 'Captain Jack');
+			roomManager.setPlayerReady('socket-1', true);
+			roomManager.addAIPlayer(roomCode);
+			roomManager.startGame(roomCode);
+
+			// Try to reconnect without disconnecting first
+			const success = roomManager.handleReconnect(roomCode, 'socket-1', 'socket-2');
+			expect(success).toBe(false);
+		});
+
+		it('should reassign host on reconnect if player was host', () => {
+			const roomCode = roomManager.createRoom('socket-1', 'Captain Jack');
+			roomManager.setPlayerReady('socket-1', true);
+			roomManager.addAIPlayer(roomCode);
+			roomManager.startGame(roomCode);
+
+			roomManager.handleDisconnect('socket-1');
+			roomManager.handleReconnect(roomCode, 'socket-1', 'socket-1-new');
+
+			expect(roomManager.isHost(roomCode, 'socket-1-new')).toBe(true);
+		});
+	});
+
 	describe('canStartGame', () => {
 		it('should return false with only one player', () => {
 			const roomCode = roomManager.createRoom('socket-1', 'Captain Jack');
