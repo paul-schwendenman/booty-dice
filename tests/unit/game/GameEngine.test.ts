@@ -388,6 +388,29 @@ describe('GameEngine', () => {
 			vi.restoreAllMocks();
 		});
 
+		it('should end the game when all players are eliminated', () => {
+			const players = createTestPlayers(3);
+			const engine = new GameEngine(players, 'TEST01');
+
+			vi.spyOn(Math, 'random').mockReturnValue(0);
+			engine.roll();
+			engine.finishRolling();
+			engine.resolveTurn();
+
+			// Eliminate all players
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(engine as any).state.players.forEach((p: { isEliminated: boolean }) => {
+				p.isEliminated = true;
+			});
+
+			engine.endTurn();
+
+			const state = engine.getState();
+			expect(state.phase).toBe('ended');
+
+			vi.restoreAllMocks();
+		});
+
 		it('should increment turn number', () => {
 			const players = createTestPlayers(2);
 			const engine = new GameEngine(players, 'TEST01');

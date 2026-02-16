@@ -222,10 +222,11 @@ export class GameEngine {
 			attempts++;
 		}
 
-		// Safety check: if we couldn't find a non-eliminated player, don't change turn
+		// Safety check: if all players are eliminated, end the game
 		// This shouldn't happen if win conditions are checked properly, but guards against edge cases
 		if (this.state.players[nextIndex].isEliminated) {
 			console.error('[GameEngine] endTurn: Could not find non-eliminated player');
+			this.state.phase = 'ended';
 			return;
 		}
 

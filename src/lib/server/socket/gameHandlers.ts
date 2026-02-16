@@ -13,6 +13,7 @@ type AppServer = Server<ClientToServerEvents, ServerToClientEvents, InterServerE
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>;
 
 const aiPlayer = new AIPlayer();
+const AI_TURN_TIMEOUT = 30_000;
 
 export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager: RoomManager) {
 	socket.on('game:lockDice', (diceIndices) => {
@@ -21,6 +22,7 @@ export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager:
 
 		const state = room.gameEngine.getState();
 		if (state.players[state.currentPlayerIndex].id !== socket.id) return;
+		if (state.turnPhase !== 'rolling') return;
 
 		room.gameEngine.lockDice(diceIndices);
 		io.to(room.code).emit('game:state', room.gameEngine.getState());
@@ -32,6 +34,7 @@ export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager:
 
 		const state = room.gameEngine.getState();
 		if (state.players[state.currentPlayerIndex].id !== socket.id) return;
+		if (state.turnPhase !== 'rolling') return;
 
 		try {
 			const result = room.gameEngine.roll();
@@ -58,6 +61,7 @@ export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager:
 			socket.id
 		);
 		if (state.players[state.currentPlayerIndex].id !== socket.id) return;
+		if (state.turnPhase !== 'rolling') return;
 
 		console.log(
 			'[game:finishRolling] before:',
@@ -77,6 +81,7 @@ export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager:
 
 		const state = room.gameEngine.getState();
 		if (state.players[state.currentPlayerIndex].id !== socket.id) return;
+		if (state.turnPhase !== 'selecting_targets') return;
 
 		try {
 			room.gameEngine.selectTarget(dieIndex, targetPlayerId);
@@ -92,6 +97,7 @@ export function setupGameHandlers(io: AppServer, socket: AppSocket, roomManager:
 
 		const state = room.gameEngine.getState();
 		if (state.players[state.currentPlayerIndex].id !== socket.id) return;
+		if (state.phase !== 'playing') return;
 
 		// Don't allow ending turn if there are unresolved targets
 		if (room.gameEngine.hasUnresolvedTargets()) {
@@ -216,67 +222,84 @@ export async function handleAITurn(
 	}
 
 	console.log(`[handleAITurn] Calling aiPlayer.takeTurn()`);
-	await aiPlayer.takeTurn(state, {
-		onLockDice: (indices) => {
-			console.log(`[handleAITurn:onLockDice] Locking dice indices: ${JSON.stringify(indices)}`);
-			if (gameEngine.getState().phase === 'ended') {
-				console.log(`[handleAITurn:onLockDice] Game ended, skipping`);
-				return;
-			}
-			gameEngine.lockDice(indices);
-			io.to(roomCode).emit('game:state', gameEngine.getState());
-		},
-		onRoll: async () => {
-			console.log(`[handleAITurn:onRoll] Rolling dice`);
-			if (gameEngine.getState().phase === 'ended') {
-				console.log(`[handleAITurn:onRoll] Game ended, returning stale dice`);
-				return state.dice;
-			}
-			try {
-				const result = gameEngine.roll();
-				console.log(
-					`[handleAITurn:onRoll] Roll result: ${result.dice.map((d) => d.face).join(', ')}, combo: ${result.combo || 'none'}`
-				);
-				io.to(roomCode).emit('game:diceRolled', result.dice, result.combo);
-				io.to(roomCode).emit('game:state', gameEngine.getState());
-				return result.dice;
-			} catch (err) {
-				console.error(`[handleAITurn:onRoll] Error rolling:`, err);
-				throw err;
-			}
-		},
-		onFinishRolling: () => {
-			console.log(`[handleAITurn:onFinishRolling] Finishing rolling phase`);
-			if (gameEngine.getState().phase === 'ended') {
-				console.log(`[handleAITurn:onFinishRolling] Game ended, skipping`);
-				return;
-			}
+
+	const timeoutPromise = new Promise<never>((_, reject) =>
+		setTimeout(() => reject(new Error('AI turn timed out')), AI_TURN_TIMEOUT)
+	);
+
+	try {
+		await Promise.race([
+			aiPlayer.takeTurn(state, {
+				onLockDice: (indices) => {
+					console.log(`[handleAITurn:onLockDice] Locking dice indices: ${JSON.stringify(indices)}`);
+					if (gameEngine.getState().phase === 'ended') {
+						console.log(`[handleAITurn:onLockDice] Game ended, skipping`);
+						return;
+					}
+					gameEngine.lockDice(indices);
+					io.to(roomCode).emit('game:state', gameEngine.getState());
+				},
+				onRoll: async () => {
+					console.log(`[handleAITurn:onRoll] Rolling dice`);
+					if (gameEngine.getState().phase === 'ended') {
+						console.log(`[handleAITurn:onRoll] Game ended, returning stale dice`);
+						return state.dice;
+					}
+					try {
+						const result = gameEngine.roll();
+						console.log(
+							`[handleAITurn:onRoll] Roll result: ${result.dice.map((d) => d.face).join(', ')}, combo: ${result.combo || 'none'}`
+						);
+						io.to(roomCode).emit('game:diceRolled', result.dice, result.combo);
+						io.to(roomCode).emit('game:state', gameEngine.getState());
+						return result.dice;
+					} catch (err) {
+						console.error(`[handleAITurn:onRoll] Error rolling:`, err);
+						throw err;
+					}
+				},
+				onFinishRolling: () => {
+					console.log(`[handleAITurn:onFinishRolling] Finishing rolling phase`);
+					if (gameEngine.getState().phase === 'ended') {
+						console.log(`[handleAITurn:onFinishRolling] Game ended, skipping`);
+						return;
+					}
+					gameEngine.finishRolling();
+					const newState = gameEngine.getState();
+					console.log(
+						`[handleAITurn:onFinishRolling] New turnPhase: ${newState.turnPhase}, pendingActions: ${newState.pendingActions.length}`
+					);
+					io.to(roomCode).emit('game:state', newState);
+				},
+				onSelectTarget: (dieIndex, targetId) => {
+					console.log(
+						`[handleAITurn:onSelectTarget] Selecting target: dieIndex=${dieIndex}, targetId=${targetId}`
+					);
+					if (gameEngine.getState().phase === 'ended') {
+						console.log(`[handleAITurn:onSelectTarget] Game ended, skipping`);
+						return;
+					}
+					gameEngine.selectTarget(dieIndex, targetId);
+					io.to(roomCode).emit('game:state', gameEngine.getState());
+				},
+				onEndTurn: () => {
+					console.log(`[handleAITurn:onEndTurn] AI ending turn`);
+					if (gameEngine.getState().phase === 'ended') {
+						console.log(`[handleAITurn:onEndTurn] Game ended, skipping`);
+						return;
+					}
+					handleEndTurn(io, roomCode, gameEngine, roomManager);
+				}
+			}),
+			timeoutPromise
+		]);
+		console.log(`[handleAITurn] aiPlayer.takeTurn() completed`);
+	} catch (err) {
+		console.error('[handleAITurn] Error/timeout:', err);
+		// Force end the AI turn to unstick the game
+		if (gameEngine.getState().phase !== 'ended') {
 			gameEngine.finishRolling();
-			const newState = gameEngine.getState();
-			console.log(
-				`[handleAITurn:onFinishRolling] New turnPhase: ${newState.turnPhase}, pendingActions: ${newState.pendingActions.length}`
-			);
-			io.to(roomCode).emit('game:state', newState);
-		},
-		onSelectTarget: (dieIndex, targetId) => {
-			console.log(
-				`[handleAITurn:onSelectTarget] Selecting target: dieIndex=${dieIndex}, targetId=${targetId}`
-			);
-			if (gameEngine.getState().phase === 'ended') {
-				console.log(`[handleAITurn:onSelectTarget] Game ended, skipping`);
-				return;
-			}
-			gameEngine.selectTarget(dieIndex, targetId);
-			io.to(roomCode).emit('game:state', gameEngine.getState());
-		},
-		onEndTurn: () => {
-			console.log(`[handleAITurn:onEndTurn] AI ending turn`);
-			if (gameEngine.getState().phase === 'ended') {
-				console.log(`[handleAITurn:onEndTurn] Game ended, skipping`);
-				return;
-			}
 			handleEndTurn(io, roomCode, gameEngine, roomManager);
 		}
-	});
-	console.log(`[handleAITurn] aiPlayer.takeTurn() completed`);
+	}
 }
