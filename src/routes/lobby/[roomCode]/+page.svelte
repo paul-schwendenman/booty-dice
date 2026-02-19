@@ -353,11 +353,15 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		min-width: 0;
 	}
 
 	.name {
 		font-weight: 600;
 		color: #eee;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.badge {
@@ -382,15 +386,19 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+		flex-shrink: 0;
+		white-space: nowrap;
 	}
 
 	.ready {
 		color: #7c7;
 		font-weight: 600;
+		font-size: 0.85rem;
 	}
 
 	.waiting {
 		color: #888;
+		font-size: 0.85rem;
 	}
 
 	.remove-btn {
