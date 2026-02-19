@@ -215,7 +215,7 @@
 		</div>
 
 		<div class="players-section">
-			<h2>Pirates ({lobby.players.length}/6)</h2>
+			<h2>Pirates ({lobby.players.length}/12)</h2>
 			<div class="players-list">
 				{#each lobby.players as lobbyPlayer (lobbyPlayer.id)}
 					<div class="player-row">
@@ -251,7 +251,7 @@
 			{/if}
 
 			{#if lobby.isHost}
-				<Button onclick={addAI} variant="secondary" disabled={lobby.players.length >= 6}>
+				<Button onclick={addAI} variant="secondary" disabled={lobby.players.length >= 12}>
 					Add AI Pirate
 				</Button>
 

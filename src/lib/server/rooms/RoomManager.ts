@@ -11,13 +11,20 @@ interface Room {
 	createdAt: number;
 }
 
+const MAX_PLAYERS = 12;
+
 const AI_NAMES = [
 	'Captain Blackbyte',
 	'Rusty Hook',
 	'One-Eyed Otto',
 	'Sea Dog Sally',
 	'Barnacle Bill',
-	'Pegleg Pete'
+	'Pegleg Pete',
+	'Dread Pirate Dex',
+	'Scurvy Jane',
+	'Jolly Roger Jr.',
+	'Cannonball Kate',
+	'Shark Tooth Sam'
 ];
 
 export class RoomManager {
@@ -47,7 +54,7 @@ export class RoomManager {
 	joinRoom(code: string, socketId: string, name: string): { success: boolean; error?: string } {
 		const room = this.rooms.get(code.toUpperCase());
 		if (!room) return { success: false, error: 'Room not found' };
-		if (room.players.size >= 6) return { success: false, error: 'Room is full' };
+		if (room.players.size >= MAX_PLAYERS) return { success: false, error: 'Room is full' };
 		if (room.gameEngine) return { success: false, error: 'Game already in progress' };
 
 		const player = createPlayer(socketId, name, false);
@@ -58,7 +65,7 @@ export class RoomManager {
 
 	addAIPlayer(roomCode: string): Player | null {
 		const room = this.rooms.get(roomCode);
-		if (!room || room.players.size >= 6) return null;
+		if (!room || room.players.size >= MAX_PLAYERS) return null;
 
 		const usedNames = [...room.players.values()].map((p) => p.name);
 		const availableNames = AI_NAMES.filter((n) => !usedNames.includes(n));
