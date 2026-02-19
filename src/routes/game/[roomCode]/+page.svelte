@@ -437,6 +437,14 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+		min-height: 0;
+	}
+
+	.players-section {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		flex-shrink: 1;
 	}
 
 	.players-section h3 {
@@ -444,13 +452,16 @@
 		color: #888;
 		text-transform: uppercase;
 		letter-spacing: 1px;
-		margin-bottom: 0.75rem;
+		margin-bottom: 0.5rem;
+		flex-shrink: 0;
 	}
 
 	.players-list {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
+		gap: 0.25rem;
+		overflow-y: auto;
+		max-height: 50vh;
 	}
 
 	.target-overlay {
@@ -482,6 +493,8 @@
 		flex-direction: column;
 		gap: 0.5rem;
 		margin-bottom: 1rem;
+		max-height: 50vh;
+		overflow-y: auto;
 	}
 
 	.target-btn {

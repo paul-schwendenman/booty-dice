@@ -28,7 +28,7 @@
 	onclick={() => isTargetable && onSelect?.()}
 	disabled={!isTargetable}
 >
-	<div class="header">
+	<div class="left">
 		<span class="name">{player.name}</span>
 		{#if player.isAI}
 			<span class="badge ai-badge">AI</span>
@@ -37,23 +37,14 @@
 			<span class="badge me-badge">You</span>
 		{/if}
 		{#if !player.isConnected}
-			<span class="badge disconnected">Offline</span>
+			<span class="badge disconnected">DC</span>
 		{/if}
 	</div>
 
 	<div class="stats">
-		<div class="stat">
-			<span class="icon">🪙</span>
-			<span class="value">{player.doubloons}</span>
-		</div>
-		<div class="stat">
-			<span class="icon">❤️</span>
-			<span class="value">{player.lives}</span>
-		</div>
-		<div class="stat">
-			<span class="icon">🛡️</span>
-			<span class="value">{player.shields}</span>
-		</div>
+		<span class="stat">🪙{player.doubloons}</span>
+		<span class="stat">❤️{player.lives}</span>
+		<span class="stat">🛡️{player.shields}</span>
 	</div>
 
 	{#if player.isEliminated}
@@ -63,20 +54,24 @@
 
 <style>
 	.player-card {
-		padding: 1rem;
+		padding: 0.5rem 0.65rem;
 		background: #2a2a2a;
-		border-radius: 10px;
-		border: 3px solid transparent;
+		border-radius: 8px;
+		border: 2px solid transparent;
 		position: relative;
 		text-align: left;
 		width: 100%;
 		cursor: default;
 		transition: all 0.2s;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
 	}
 
 	.player-card.current-turn {
 		border-color: #d4a574;
-		box-shadow: 0 0 15px rgba(212, 165, 116, 0.4);
+		box-shadow: 0 0 10px rgba(212, 165, 116, 0.3);
 	}
 
 	.player-card.is-me {
@@ -106,30 +101,34 @@
 		background: rgba(0, 0, 0, 0.7);
 		color: #c44;
 		font-weight: bold;
-		font-size: 1.1rem;
-		border-radius: 8px;
+		font-size: 0.75rem;
+		border-radius: 6px;
 		letter-spacing: 2px;
 	}
 
-	.header {
+	.left {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
-		margin-bottom: 0.75rem;
+		gap: 0.35rem;
+		min-width: 0;
 	}
 
 	.name {
 		font-weight: 600;
 		color: #eee;
-		font-size: 1.1rem;
+		font-size: 0.85rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.badge {
-		font-size: 0.65rem;
-		padding: 2px 6px;
-		border-radius: 4px;
+		font-size: 0.55rem;
+		padding: 1px 4px;
+		border-radius: 3px;
 		font-weight: 600;
 		text-transform: uppercase;
+		flex-shrink: 0;
 	}
 
 	.ai-badge {
@@ -149,22 +148,12 @@
 
 	.stats {
 		display: flex;
-		gap: 1.25rem;
+		gap: 0.5rem;
+		flex-shrink: 0;
 	}
 
 	.stat {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-	}
-
-	.icon {
-		font-size: 1.1rem;
-	}
-
-	.value {
-		font-weight: 600;
-		font-size: 1.1rem;
-		color: #eee;
+		font-size: 0.8rem;
+		color: #ccc;
 	}
 </style>

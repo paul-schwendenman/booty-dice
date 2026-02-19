@@ -271,7 +271,7 @@
 
 <style>
 	.container {
-		max-width: 500px;
+		max-width: 600px;
 		margin: 0 auto;
 		padding: 2rem;
 		min-height: 100vh;
@@ -329,18 +329,24 @@
 	}
 
 	.players-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.4rem;
+	}
+
+	@media (max-width: 500px) {
+		.players-list {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	.player-row {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 1rem;
+		padding: 0.6rem 0.75rem;
 		background: #2a2a2a;
-		border-radius: 8px;
+		border-radius: 6px;
 	}
 
 	.player-info {
