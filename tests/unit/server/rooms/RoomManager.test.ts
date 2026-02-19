@@ -44,13 +44,11 @@ describe('RoomManager', () => {
 
 		it('should return error when room is full', () => {
 			const roomCode = roomManager.createRoom('socket-1', 'Player 1');
-			roomManager.joinRoom(roomCode, 'socket-2', 'Player 2');
-			roomManager.joinRoom(roomCode, 'socket-3', 'Player 3');
-			roomManager.joinRoom(roomCode, 'socket-4', 'Player 4');
-			roomManager.joinRoom(roomCode, 'socket-5', 'Player 5');
-			roomManager.joinRoom(roomCode, 'socket-6', 'Player 6');
+			for (let i = 2; i <= 12; i++) {
+				roomManager.joinRoom(roomCode, `socket-${i}`, `Player ${i}`);
+			}
 
-			const result = roomManager.joinRoom(roomCode, 'socket-7', 'Player 7');
+			const result = roomManager.joinRoom(roomCode, 'socket-13', 'Player 13');
 
 			expect(result.success).toBe(false);
 			expect(result.error).toBe('Room is full');

@@ -20,21 +20,21 @@ describe('PlayerCard', () => {
 			const player = createTestPlayer({ doubloons: 15 });
 			render(PlayerCard, { props: { player } });
 
-			expect(screen.getByText('15')).toBeInTheDocument();
+			expect(screen.getByText('🪙15')).toBeInTheDocument();
 		});
 
 		it('should display player lives', () => {
 			const player = createTestPlayer({ lives: 7 });
 			render(PlayerCard, { props: { player } });
 
-			expect(screen.getByText('7')).toBeInTheDocument();
+			expect(screen.getByText('❤️7')).toBeInTheDocument();
 		});
 
 		it('should display player shields', () => {
 			const player = createTestPlayer({ shields: 2 });
 			render(PlayerCard, { props: { player } });
 
-			expect(screen.getByText('2')).toBeInTheDocument();
+			expect(screen.getByText('🛡️2')).toBeInTheDocument();
 		});
 
 		it('should show AI badge for AI players', () => {
@@ -65,18 +65,18 @@ describe('PlayerCard', () => {
 			expect(screen.queryByText('You')).not.toBeInTheDocument();
 		});
 
-		it('should show Offline badge for disconnected players', () => {
+		it('should show DC badge for disconnected players', () => {
 			const player = createTestPlayer({ isConnected: false });
 			render(PlayerCard, { props: { player } });
 
-			expect(screen.getByText('Offline')).toBeInTheDocument();
+			expect(screen.getByText('DC')).toBeInTheDocument();
 		});
 
-		it('should not show Offline badge for connected players', () => {
+		it('should not show DC badge for connected players', () => {
 			const player = createTestPlayer({ isConnected: true });
 			render(PlayerCard, { props: { player } });
 
-			expect(screen.queryByText('Offline')).not.toBeInTheDocument();
+			expect(screen.queryByText('DC')).not.toBeInTheDocument();
 		});
 
 		it('should show ELIMINATED overlay for eliminated players', () => {
