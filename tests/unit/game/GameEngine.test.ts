@@ -1,10 +1,47 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { GameEngine } from '$lib/server/game/GameEngine.js';
 import { createTestPlayers, resetPlayerIdCounter } from '../../factories/player.js';
+
+// DICE_FACES order: ['doubloon', 'x_marks_spot', 'jolly_roger', 'cutlass', 'walk_plank', 'shield']
+// Math.floor(random * 6) mapping:
+//   0 = doubloon       (random in [0, 0.167))
+//   1 = x_marks_spot   (random in [0.167, 0.333))
+//   2 = jolly_roger     (random in [0.333, 0.5))
+//   3 = cutlass         (random in [0.5, 0.667))
+//   4 = walk_plank      (random in [0.667, 0.833))
+//   5 = shield          (random in [0.833, 1))
+
+/** Mock Math.random with a sequence of values, controlling both shuffle and dice rolls. */
+function mockRandomSequence(values: number[]) {
+	let callCount = 0;
+	vi.spyOn(Math, 'random').mockImplementation(() => {
+		return values[callCount++] ?? 0.05;
+	});
+}
+
+/**
+ * For a 2-player game, shuffle uses 1 Math.random call.
+ * Returning 0.99 keeps the original player order (j=floor(0.99*2)=1, swap with self).
+ * For a 3-player game, shuffle uses 2 calls.
+ * Returning 0.99 for both keeps the original order.
+ */
+const SHUFFLE_KEEP_ORDER_2P = [0.99];
+const SHUFFLE_KEEP_ORDER_3P = [0.99, 0.99];
+
+const DOUBLOON = 0.05;
+const X_MARKS_SPOT = 0.2;
+const JOLLY_ROGER = 0.4;
+const CUTLASS = 0.55;
+const WALK_PLANK = 0.7;
+const SHIELD = 0.85;
 
 describe('GameEngine', () => {
 	beforeEach(() => {
 		resetPlayerIdCounter();
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
 	});
 
 	describe('constructor', () => {
@@ -154,31 +191,49 @@ describe('GameEngine', () => {
 	describe('selectTarget', () => {
 		it('should assign target to pending action', () => {
 			const players = createTestPlayers(3);
-			const engine = new GameEngine(players, 'TEST01');
 
-			// Mock random to produce cutlass
-			vi.spyOn(Math, 'random').mockReturnValue(0.5); // cutlass
+			// Control shuffle + dice: all cutlass
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_3P,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS, // roll 1
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS, // roll 2
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS // roll 3
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 			engine.roll();
 			engine.roll();
 
 			const state = engine.getState();
 			const cutlassAction = state.pendingActions.find((a) => a.face === 'cutlass');
+			expect(cutlassAction).toBeDefined();
 
-			if (cutlassAction) {
-				const targetId = players[1].id;
-				engine.selectTarget(cutlassAction.dieIndex, targetId);
+			const targetId = players[1].id;
+			engine.selectTarget(cutlassAction!.dieIndex, targetId);
 
-				const updatedState = engine.getState();
-				const updatedAction = updatedState.pendingActions.find(
-					(a) => a.dieIndex === cutlassAction.dieIndex
-				);
+			const updatedState = engine.getState();
+			const updatedAction = updatedState.pendingActions.find(
+				(a) => a.dieIndex === cutlassAction!.dieIndex
+			);
 
-				expect(updatedAction?.targetPlayerId).toBe(targetId);
-				expect(updatedAction?.resolved).toBe(true);
-			}
-
-			vi.restoreAllMocks();
+			expect(updatedAction?.targetPlayerId).toBe(targetId);
+			expect(updatedAction?.resolved).toBe(true);
 		});
 
 		it('should throw error for invalid action', () => {
@@ -190,25 +245,43 @@ describe('GameEngine', () => {
 
 		it('should transition to resolving when all targets selected', () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			// Force cutlass roll
-			vi.spyOn(Math, 'random').mockReturnValue(0.5);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 			engine.roll();
 			engine.roll();
 
 			const state = engine.getState();
+			expect(state.pendingActions.length).toBeGreaterThan(0);
+
 			state.pendingActions.forEach((action) => {
 				engine.selectTarget(action.dieIndex, players[1].id);
 			});
 
 			const finalState = engine.getState();
-			if (finalState.pendingActions.length > 0) {
-				expect(finalState.turnPhase).toBe('resolving');
-			}
-
-			vi.restoreAllMocks();
+			expect(finalState.turnPhase).toBe('resolving');
 		});
 	});
 
@@ -224,24 +297,38 @@ describe('GameEngine', () => {
 	describe('finishRolling', () => {
 		it('should transition to resolving when no pending actions', () => {
 			const players = createTestPlayers(2);
+
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
+
 			const engine = new GameEngine(players, 'TEST01');
-
-			// Force doubloon rolls (no targets needed)
-			vi.spyOn(Math, 'random').mockReturnValue(0);
 			engine.roll();
-
 			engine.finishRolling();
 
 			expect(engine.getState().turnPhase).toBe('resolving');
-
-			vi.restoreAllMocks();
 		});
 
 		it('should do nothing if not in rolling phase', () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			vi.spyOn(Math, 'random').mockReturnValue(0);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 			engine.finishRolling();
 
@@ -250,18 +337,24 @@ describe('GameEngine', () => {
 			const phaseAfter = engine.getState().turnPhase;
 
 			expect(phaseBefore).toBe(phaseAfter);
-
-			vi.restoreAllMocks();
 		});
 	});
 
 	describe('resolveTurn', () => {
 		it('should return effects and no eliminations for safe roll', () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			// Force all doubloons
-			vi.spyOn(Math, 'random').mockReturnValue(0);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 			engine.finishRolling();
 
@@ -270,67 +363,76 @@ describe('GameEngine', () => {
 			expect(result.effects.length).toBeGreaterThan(0);
 			expect(result.eliminations).toEqual([]);
 			expect(result.winner).toBeNull();
-
-			vi.restoreAllMocks();
 		});
 
 		it('should detect elimination when player loses all lives', () => {
 			const players = createTestPlayers(2);
-			players[0].lives = 1; // Almost dead
+			players[0].lives = 1;
+
+			// 1 walk_plank (self-damage) + 5 doubloons — no mutiny combo
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				WALK_PLANK,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
 
 			const engine = new GameEngine(players, 'TEST01');
+			// player-1 is current (1 life), player-2 is other
 
-			// Force walk_plank
-			vi.spyOn(Math, 'random').mockReturnValue(0.67);
 			engine.roll();
 			engine.finishRolling();
-
 			const result = engine.resolveTurn();
 
-			const currentPlayerDied = result.eliminations.includes(players[0].id);
-
-			// If the current player took walk_plank damage and died
-			if (currentPlayerDied) {
-				expect(result.winner).not.toBeNull(); // Other player wins
-			}
-
-			vi.restoreAllMocks();
+			expect(result.eliminations).toContain(players[0].id);
+			expect(result.winner).toBe(players[1].id);
 		});
 
 		it('should detect win by reaching 25 doubloons', () => {
 			const players = createTestPlayers(2);
+			players[0].doubloons = 23;
+			players[1].doubloons = 23;
+
+			// All doubloons (+2 each × 6 = +12, total 35 >= 25)
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
 
 			const engine = new GameEngine(players, 'TEST01');
-
-			// Set current player's doubloons to 23 AFTER engine creation
-			// (engine shuffles players, so we need to update the actual current player)
-			const currentPlayer = engine.getCurrentPlayer();
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.players.find(
-				(p: { id: string }) => p.id === currentPlayer.id
-			).doubloons = 23;
-
-			// Force doubloons (each gives +2)
-			vi.spyOn(Math, 'random').mockReturnValue(0);
 			engine.roll();
 			engine.finishRolling();
 
 			const result = engine.resolveTurn();
 
-			// 23 + (6 * 2) = 35 coins
 			expect(result.winner).not.toBeNull();
 			expect(engine.getState().phase).toBe('ended');
-
-			vi.restoreAllMocks();
 		});
 	});
 
 	describe('endTurn', () => {
 		it('should advance to next player', () => {
 			const players = createTestPlayers(3);
-			const engine = new GameEngine(players, 'TEST01');
 
-			vi.spyOn(Math, 'random').mockReturnValue(0);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_3P,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 			engine.finishRolling();
 			engine.resolveTurn();
@@ -340,38 +442,62 @@ describe('GameEngine', () => {
 
 			const newIndex = engine.getState().currentPlayerIndex;
 			expect(newIndex).toBe((initialIndex + 1) % 3);
-
-			vi.restoreAllMocks();
 		});
 
 		it('should skip eliminated players', () => {
 			const players = createTestPlayers(3);
-			const engine = new GameEngine(players, 'TEST01');
+			// Player at index 1 (player-2) will be targeted and killed
+			players[1].lives = 1;
+			players[1].shields = 0;
 
-			// Manually mark player at index 1 as eliminated
-			vi.spyOn(Math, 'random').mockReturnValue(0);
+			// Shuffle keeps order, all dice = cutlass
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_3P,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
+			// player-1 is current (index 0), player-2 at index 1 (1 life), player-3 at index 2
+
 			engine.roll();
 			engine.finishRolling();
-			engine.resolveTurn();
 
-			// Manually eliminate player 1 for this test
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.players[1].isEliminated = true;
+			// Target player-2 with all cutlass attacks
+			const state = engine.getState();
+			state.pendingActions.forEach((action) => {
+				engine.selectTarget(action.dieIndex, players[1].id);
+			});
+
+			const result = engine.resolveTurn();
+			expect(result.eliminations).toContain(players[1].id);
 
 			engine.endTurn();
 
+			// Should skip player-2 (eliminated at index 1) and go to player-3 (index 2)
 			const newState = engine.getState();
-			const currentPlayer = newState.players[newState.currentPlayerIndex];
-			expect(currentPlayer.isEliminated).toBe(false);
-
-			vi.restoreAllMocks();
+			expect(newState.players[newState.currentPlayerIndex].isEliminated).toBe(false);
+			expect(newState.players[newState.currentPlayerIndex].id).toBe(players[2].id);
 		});
 
 		it('should reset dice and rolls for new turn', () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			vi.spyOn(Math, 'random').mockReturnValue(0);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 			engine.lockDice([0, 1, 2]);
 			engine.finishRolling();
@@ -381,23 +507,31 @@ describe('GameEngine', () => {
 			const state = engine.getState();
 			expect(state.rollsRemaining).toBe(3);
 			expect(state.dice.every((d) => !d.locked)).toBe(true);
-			expect(state.dice.every((d) => d.face === 'doubloon')).toBe(true);
 			expect(state.turnPhase).toBe('rolling');
 			expect(state.pendingActions).toEqual([]);
-
-			vi.restoreAllMocks();
 		});
 
-		it('should end the game when all players are eliminated', () => {
+		it('should handle safety check when no non-eliminated player can be found', () => {
+			// This tests a defensive safety guard that shouldn't be reachable through
+			// normal gameplay (win conditions should catch it first). We use internal
+			// state manipulation because this edge case can't be produced through the API.
 			const players = createTestPlayers(3);
-			const engine = new GameEngine(players, 'TEST01');
 
-			vi.spyOn(Math, 'random').mockReturnValue(0);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_3P,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 			engine.finishRolling();
 			engine.resolveTurn();
 
-			// Eliminate all players
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(engine as any).state.players.forEach((p: { isEliminated: boolean }) => {
 				p.isEliminated = true;
@@ -407,15 +541,22 @@ describe('GameEngine', () => {
 
 			const state = engine.getState();
 			expect(state.phase).toBe('ended');
-
-			vi.restoreAllMocks();
 		});
 
 		it('should increment turn number', () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			vi.spyOn(Math, 'random').mockReturnValue(0);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 			engine.finishRolling();
 			engine.resolveTurn();
@@ -425,125 +566,156 @@ describe('GameEngine', () => {
 			const turnAfter = engine.getState().turnNumber;
 
 			expect(turnAfter).toBe(turnBefore + 1);
-
-			vi.restoreAllMocks();
 		});
 	});
 
 	describe('shield absorption', () => {
 		it('should absorb damage when target has shields', () => {
 			const players = createTestPlayers(2);
-			// Give enough shields to absorb all 6 cutlass attacks
+			players[0].shields = 10;
+			players[0].lives = 10;
 			players[1].shields = 10;
 			players[1].lives = 10;
 
-			const engine = new GameEngine(players, 'TEST01');
+			// Shuffle keeps order, all cutlass
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS
+			]);
 
-			// Force cutlass (attack)
-			vi.spyOn(Math, 'random').mockReturnValue(0.5);
+			const engine = new GameEngine(players, 'TEST01');
+			// player-1 is current, player-2 is target (10 shields, 10 lives)
+
 			engine.roll();
 			engine.roll();
 			engine.roll();
 
 			const state = engine.getState();
 			const currentPlayer = state.players[state.currentPlayerIndex];
-			const target = state.players.find((p) => p.id !== currentPlayer.id);
+			const target = state.players.find((p) => p.id !== currentPlayer.id)!;
 
-			if (target) {
-				const initialShields = target.shields;
-				const initialLives = target.lives;
+			state.pendingActions.forEach((action) => {
+				engine.selectTarget(action.dieIndex, target.id);
+			});
 
-				state.pendingActions.forEach((action) => {
-					if (action.face === 'cutlass') {
-						engine.selectTarget(action.dieIndex, target.id);
-					}
-				});
+			engine.resolveTurn();
 
-				engine.finishRolling();
-				engine.resolveTurn();
+			const finalState = engine.getState();
+			const finalTarget = finalState.players.find((p) => p.id === target.id)!;
 
-				const finalState = engine.getState();
-				const finalTarget = finalState.players.find((p) => p.id === target.id);
-
-				// If there were cutlass attacks, shields should have absorbed them
-				const cutlassCount = state.pendingActions.filter((a) => a.face === 'cutlass').length;
-				if (cutlassCount > 0 && initialShields > 0) {
-					expect(finalTarget!.shields).toBeLessThan(initialShields);
-					expect(finalTarget!.lives).toBe(initialLives); // Lives preserved
-				}
-			}
-
-			vi.restoreAllMocks();
+			// 6 cutlass attacks, each absorbed by a shield
+			expect(finalTarget.shields).toBe(4); // 10 - 6 = 4
+			expect(finalTarget.lives).toBe(10); // Lives preserved by shields
 		});
 
 		it('should deal damage when no shields available', () => {
 			const players = createTestPlayers(2);
+			players[0].shields = 0;
 			players[1].shields = 0;
-			players[1].lives = 10;
+
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS
+			]);
 
 			const engine = new GameEngine(players, 'TEST01');
 
-			// Force cutlass
-			vi.spyOn(Math, 'random').mockReturnValue(0.5);
 			engine.roll();
 			engine.roll();
 			engine.roll();
 
 			const state = engine.getState();
 			const currentPlayer = state.players[state.currentPlayerIndex];
-			const target = state.players.find((p) => p.id !== currentPlayer.id);
+			const target = state.players.find((p) => p.id !== currentPlayer.id)!;
 
-			if (target) {
-				state.pendingActions.forEach((action) => {
-					if (action.face === 'cutlass') {
-						engine.selectTarget(action.dieIndex, target.id);
-					}
-				});
+			state.pendingActions.forEach((action) => {
+				engine.selectTarget(action.dieIndex, target.id);
+			});
 
-				engine.finishRolling();
-				engine.resolveTurn();
+			engine.resolveTurn();
 
-				const finalState = engine.getState();
-				const finalTarget = finalState.players.find((p) => p.id === target.id);
+			const finalState = engine.getState();
+			const finalTarget = finalState.players.find((p) => p.id === target.id)!;
 
-				const cutlassCount = state.pendingActions.filter((a) => a.face === 'cutlass').length;
-				if (cutlassCount > 0) {
-					expect(finalTarget!.lives).toBeLessThan(10);
-				}
-			}
-
-			vi.restoreAllMocks();
+			// 6 cutlass attacks, no shields, each deals 1 damage
+			expect(finalTarget.lives).toBe(4); // 10 - 6 = 4
 		});
 	});
 
 	describe('finishRolling with pending actions', () => {
 		it('should transition to selecting_targets when there are pending actions', () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			// Force cutlass (creates pending action)
-			vi.spyOn(Math, 'random').mockReturnValue(0.5);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 
-			// Manually call finishRolling with pending actions
 			engine.finishRolling();
 
 			const state = engine.getState();
-			if (state.pendingActions.length > 0) {
-				expect(state.turnPhase).toBe('selecting_targets');
-			}
-
-			vi.restoreAllMocks();
+			expect(state.pendingActions.length).toBeGreaterThan(0);
+			expect(state.turnPhase).toBe('selecting_targets');
 		});
 	});
 
 	describe('turn summary', () => {
 		it('should log negative coin summary when losing more than gaining', () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			// Force x_marks_spot (loses coins)
-			vi.spyOn(Math, 'random').mockReturnValue(0.17);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 			engine.finishRolling();
 			engine.resolveTurn();
@@ -551,287 +723,283 @@ describe('GameEngine', () => {
 			const state = engine.getState();
 			const summaryLog = state.gameLog.find((e) => e.type === 'summary');
 			expect(summaryLog).toBeDefined();
-
-			vi.restoreAllMocks();
 		});
 	});
 
 	describe('combo descriptions', () => {
 		it('should describe mutiny combo in log', () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			// Force walk_plank (mutiny needs 3+)
-			vi.spyOn(Math, 'random').mockReturnValue(0.67);
+			// 6 walk_plank → mutiny (3+ walk_plank)
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				WALK_PLANK,
+				WALK_PLANK,
+				WALK_PLANK,
+				WALK_PLANK,
+				WALK_PLANK,
+				WALK_PLANK
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 
 			const state = engine.getState();
 			const comboLog = state.gameLog.find(
 				(e) => e.type === 'combo' && e.message.includes('MUTINY')
 			);
-			// Mutiny requires 3+ walk_plank, may not always trigger
-			if (comboLog) {
-				expect(comboLog.message).toContain('MUTINY');
-			}
-
-			vi.restoreAllMocks();
+			expect(comboLog).toBeDefined();
+			expect(comboLog!.message).toContain('MUTINY');
 		});
 
 		it('should describe shipwreck combo in log', () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			// Force x_marks_spot (shipwreck needs 3+)
-			vi.spyOn(Math, 'random').mockReturnValue(0.17);
+			// 6 x_marks_spot → shipwreck (3+ x_marks_spot)
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 
 			const state = engine.getState();
 			const comboLog = state.gameLog.find(
 				(e) => e.type === 'combo' && e.message.includes('SHIPWRECK')
 			);
-			// Shipwreck requires 3+ x_marks_spot, may not always trigger
-			if (comboLog) {
-				expect(comboLog.message).toContain('SHIPWRECK');
-			}
-
-			vi.restoreAllMocks();
+			expect(comboLog).toBeDefined();
+			expect(comboLog!.message).toContain('SHIPWRECK');
 		});
 
 		it("should describe blackbeard's curse combo in log when all faces unique", () => {
 			const players = createTestPlayers(2);
+
+			// Shuffle + 6 unique faces for Blackbeard's Curse
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				DOUBLOON,
+				X_MARKS_SPOT,
+				JOLLY_ROGER,
+				CUTLASS,
+				WALK_PLANK,
+				SHIELD
+			]);
+
 			const engine = new GameEngine(players, 'TEST01');
-
-			// Lock all dice to specific faces for Blackbeard's Curse
-			let callCount = 0;
-			vi.spyOn(Math, 'random').mockImplementation(() => {
-				// Return values that produce all 6 different faces
-				const values = [0, 0.17, 0.34, 0.5, 0.67, 0.84];
-				return values[callCount++ % 6];
-			});
-
 			engine.roll();
 
 			const state = engine.getState();
 			const comboLog = state.gameLog.find(
 				(e) => e.type === 'combo' && e.message.includes("BLACKBEARD'S CURSE")
 			);
-
-			if (comboLog) {
-				expect(comboLog.message).toContain("BLACKBEARD'S CURSE");
-			}
-
-			vi.restoreAllMocks();
+			expect(comboLog).toBeDefined();
+			expect(comboLog!.message).toContain("BLACKBEARD'S CURSE");
 		});
 
 		it("should not require target selection for blackbeard's curse", () => {
 			const players = createTestPlayers(2);
+
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				DOUBLOON,
+				X_MARKS_SPOT,
+				JOLLY_ROGER,
+				CUTLASS,
+				WALK_PLANK,
+				SHIELD
+			]);
+
 			const engine = new GameEngine(players, 'TEST01');
-
-			// Force all 6 different faces for Blackbeard's Curse
-			let callCount = 0;
-			vi.spyOn(Math, 'random').mockImplementation(() => {
-				const values = [0, 0.17, 0.34, 0.5, 0.67, 0.84];
-				return values[callCount++ % 6];
-			});
-
 			engine.roll();
 
 			const state = engine.getState();
 
-			// Verify Blackbeard's Curse was detected
 			const comboLog = state.gameLog.find(
 				(e) => e.type === 'combo' && e.message.includes("BLACKBEARD'S CURSE")
 			);
 			expect(comboLog).toBeDefined();
 
-			// Key fix: no pending actions despite having cutlass and jolly_roger
+			// No pending actions despite having cutlass and jolly_roger
 			expect(state.pendingActions).toEqual([]);
-			expect(state.turnPhase).toBe('rolling'); // Not 'selecting_targets'
-
-			vi.restoreAllMocks();
+			expect(state.turnPhase).toBe('rolling');
 		});
 
 		it("should not include 'stole' or 'shot' in turn summary for blackbeard's curse", () => {
 			const players = createTestPlayers(2);
+
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				DOUBLOON,
+				X_MARKS_SPOT,
+				JOLLY_ROGER,
+				CUTLASS,
+				WALK_PLANK,
+				SHIELD
+			]);
+
 			const engine = new GameEngine(players, 'TEST01');
-
-			// Force all 6 different faces for Blackbeard's Curse
-			let callCount = 0;
-			vi.spyOn(Math, 'random').mockImplementation(() => {
-				const values = [0, 0.17, 0.34, 0.5, 0.67, 0.84];
-				return values[callCount++ % 6];
-			});
-
 			engine.roll();
 			engine.finishRolling();
 			engine.resolveTurn();
 
 			const state = engine.getState();
 
-			// Verify Blackbeard's Curse was detected
 			const comboLog = state.gameLog.find(
 				(e) => e.type === 'combo' && e.message.includes("BLACKBEARD'S CURSE")
 			);
 			expect(comboLog).toBeDefined();
 
-			// Check turn summary doesn't say "stole" or "shot"
 			const summaryLog = state.gameLog.find((e) => e.type === 'summary');
 			expect(summaryLog).toBeDefined();
 			expect(summaryLog!.message).not.toContain('stole');
 			expect(summaryLog!.message).not.toContain('shot');
-
-			vi.restoreAllMocks();
 		});
 
 		it("should not include 'shot' or 'damage' in turn summary for mutiny (uses life_lost, not damage)", () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			// Force walk_plank for mutiny (3+ needed)
-			vi.spyOn(Math, 'random').mockReturnValue(0.67);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				WALK_PLANK,
+				WALK_PLANK,
+				WALK_PLANK,
+				WALK_PLANK,
+				WALK_PLANK,
+				WALK_PLANK
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 
 			const state = engine.getState();
 			const comboLog = state.gameLog.find(
 				(e) => e.type === 'combo' && e.message.includes('MUTINY')
 			);
+			expect(comboLog).toBeDefined();
 
-			// Only proceed if we got mutiny
-			if (comboLog) {
-				engine.finishRolling();
-				engine.resolveTurn();
+			engine.finishRolling();
+			engine.resolveTurn();
 
-				const finalState = engine.getState();
-				const summaryLog = finalState.gameLog.find((e) => e.type === 'summary');
-				expect(summaryLog).toBeDefined();
-				// Mutiny damage shouldn't appear as "shot" since it uses life_lost type
-				expect(summaryLog!.message).not.toContain('shot');
-				expect(summaryLog!.message).not.toContain('dealt');
-			}
-
-			vi.restoreAllMocks();
+			const finalState = engine.getState();
+			const summaryLog = finalState.gameLog.find((e) => e.type === 'summary');
+			expect(summaryLog).toBeDefined();
+			expect(summaryLog!.message).not.toContain('shot');
+			expect(summaryLog!.message).not.toContain('dealt');
 		});
 
 		it("should not include 'stole' in turn summary for shipwreck (no sourceId)", () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
 
-			// Force x_marks_spot for shipwreck (3+ needed)
-			vi.spyOn(Math, 'random').mockReturnValue(0.17);
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT,
+				X_MARKS_SPOT
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 
 			const state = engine.getState();
 			const comboLog = state.gameLog.find(
 				(e) => e.type === 'combo' && e.message.includes('SHIPWRECK')
 			);
+			expect(comboLog).toBeDefined();
 
-			// Only proceed if we got shipwreck
-			if (comboLog) {
-				engine.finishRolling();
-				engine.resolveTurn();
+			engine.finishRolling();
+			engine.resolveTurn();
 
-				const finalState = engine.getState();
-				const summaryLog = finalState.gameLog.find((e) => e.type === 'summary');
-				expect(summaryLog).toBeDefined();
-				// Shipwreck coin loss shouldn't appear as "stole" since it has no sourceId
-				expect(summaryLog!.message).not.toContain('stole');
-			}
-
-			vi.restoreAllMocks();
+			const finalState = engine.getState();
+			const summaryLog = finalState.gameLog.find((e) => e.type === 'summary');
+			expect(summaryLog).toBeDefined();
+			expect(summaryLog!.message).not.toContain('stole');
 		});
 	});
 
 	describe('eliminated player effects', () => {
 		it('should not resolve cutlass attacks if the attacker dies from walk_plank during resolution', () => {
 			const players = createTestPlayers(2);
-			const engine = new GameEngine(players, 'TEST01');
+			players[0].lives = 1; // Current player has 1 life
 
-			// Get the current player and set them to 1 life so walk_plank kills them
-			const state = engine.getState();
-			const currentPlayerId = state.players[state.currentPlayerIndex].id;
-			const targetPlayer = state.players.find((p) => p.id !== currentPlayerId)!;
+			// walk_plank (kills current player) + cutlass (should NOT resolve) + 4 doubloons
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				WALK_PLANK,
+				CUTLASS,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
+
+			const engine = new GameEngine(players, 'TEST01');
+			const targetPlayer = engine.getState().players.find((p) => p.id === players[1].id)!;
 			const targetInitialLives = targetPlayer.lives;
 
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.players.find((p: { id: string }) => p.id === currentPlayerId).lives = 1;
+			engine.roll();
+			engine.finishRolling();
 
-			// Manually set dice to have both walk_plank and cutlass
-			// walk_plank at index 0 will be processed first, killing the player
-			// cutlass at index 1 should then NOT deal damage
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.dice = [
-				{ id: 0, face: 'walk_plank', locked: false, rolling: false },
-				{ id: 1, face: 'cutlass', locked: false, rolling: false },
-				{ id: 2, face: 'doubloon', locked: false, rolling: false },
-				{ id: 3, face: 'doubloon', locked: false, rolling: false },
-				{ id: 4, face: 'doubloon', locked: false, rolling: false },
-				{ id: 5, face: 'doubloon', locked: false, rolling: false }
-			];
-
-			// Set up the pending action for cutlass targeting the other player
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.pendingActions = [
-				{ dieIndex: 1, face: 'cutlass', resolved: true, targetPlayerId: targetPlayer.id }
-			];
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.rollsRemaining = 0;
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.turnPhase = 'resolving';
+			// Select target for cutlass
+			const state = engine.getState();
+			const cutlassAction = state.pendingActions.find((a) => a.face === 'cutlass');
+			expect(cutlassAction).toBeDefined();
+			engine.selectTarget(cutlassAction!.dieIndex, players[1].id);
 
 			const result = engine.resolveTurn();
 
-			// The current player should be eliminated from walk_plank
-			expect(result.eliminations).toContain(currentPlayerId);
+			// Current player died from walk_plank
+			expect(result.eliminations).toContain(players[0].id);
 
-			// The target player should NOT have lost any lives from cutlass
-			// because the attacker died before their attack could resolve
-			const finalState = engine.getState();
-			const finalTarget = finalState.players.find((p) => p.id === targetPlayer.id)!;
+			// Target should NOT have lost any lives — attacker died before cutlass resolved
+			const finalTarget = engine.getState().players.find((p) => p.id === players[1].id)!;
 			expect(finalTarget.lives).toBe(targetInitialLives);
 		});
 
 		it('should not resolve jolly_roger steals if the attacker dies from walk_plank during resolution', () => {
 			const players = createTestPlayers(2);
+			players[0].lives = 1; // Current player has 1 life
+
+			// walk_plank (kills current player) + jolly_roger (should NOT resolve) + 4 doubloons
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				WALK_PLANK,
+				JOLLY_ROGER,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON,
+				DOUBLOON
+			]);
+
 			const engine = new GameEngine(players, 'TEST01');
+			const targetInitialCoins = engine
+				.getState()
+				.players.find((p) => p.id === players[1].id)!.doubloons;
 
+			engine.roll();
+			engine.finishRolling();
+
+			// Select target for jolly_roger
 			const state = engine.getState();
-			const currentPlayerId = state.players[state.currentPlayerIndex].id;
-			const targetPlayer = state.players.find((p) => p.id !== currentPlayerId)!;
-			const targetInitialCoins = targetPlayer.doubloons;
-
-			// Set current player to 1 life so walk_plank kills them
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.players.find((p: { id: string }) => p.id === currentPlayerId).lives = 1;
-
-			// Set dice to have walk_plank and jolly_roger
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.dice = [
-				{ id: 0, face: 'walk_plank', locked: false, rolling: false },
-				{ id: 1, face: 'jolly_roger', locked: false, rolling: false },
-				{ id: 2, face: 'doubloon', locked: false, rolling: false },
-				{ id: 3, face: 'doubloon', locked: false, rolling: false },
-				{ id: 4, face: 'doubloon', locked: false, rolling: false },
-				{ id: 5, face: 'doubloon', locked: false, rolling: false }
-			];
-
-			// Set up pending action for jolly_roger targeting the other player
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.pendingActions = [
-				{ dieIndex: 1, face: 'jolly_roger', resolved: true, targetPlayerId: targetPlayer.id }
-			];
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.rollsRemaining = 0;
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(engine as any).state.turnPhase = 'resolving';
+			const stealAction = state.pendingActions.find((a) => a.face === 'jolly_roger');
+			expect(stealAction).toBeDefined();
+			engine.selectTarget(stealAction!.dieIndex, players[1].id);
 
 			const result = engine.resolveTurn();
 
-			// The current player should be eliminated
-			expect(result.eliminations).toContain(currentPlayerId);
+			// Current player died from walk_plank
+			expect(result.eliminations).toContain(players[0].id);
 
-			// The target player should NOT have lost any coins from jolly_roger
-			const finalState = engine.getState();
-			const finalTarget = finalState.players.find((p) => p.id === targetPlayer.id)!;
+			// Target should NOT have lost any coins — attacker died before steal resolved
+			const finalTarget = engine.getState().players.find((p) => p.id === players[1].id)!;
 			expect(finalTarget.doubloons).toBe(targetInitialCoins);
 		});
 	});
@@ -839,39 +1007,52 @@ describe('GameEngine', () => {
 	describe('win conditions', () => {
 		it('should detect last standing win', () => {
 			const players = createTestPlayers(2);
-			players[0].lives = 10;
+			// Both start with these stats so regardless of shuffle, the target has 1 life
+			players[0].lives = 1;
+			players[0].shields = 0;
 			players[1].lives = 1;
 			players[1].shields = 0;
 
-			const engine = new GameEngine(players, 'TEST01');
+			// All cutlass — current player attacks target, kills them
+			mockRandomSequence([
+				...SHUFFLE_KEEP_ORDER_2P,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS,
+				CUTLASS
+			]);
 
-			// Current player attacks player 1
-			vi.spyOn(Math, 'random').mockReturnValue(0.5); // cutlass
+			const engine = new GameEngine(players, 'TEST01');
 			engine.roll();
 			engine.roll();
 			engine.roll();
 
 			const currentState = engine.getState();
-			const targetPlayer = currentState.players.find(
-				(p) => p.id !== currentState.players[currentState.currentPlayerIndex].id
-			);
+			const currentPlayerId = currentState.players[currentState.currentPlayerIndex].id;
+			const targetPlayer = currentState.players.find((p) => p.id !== currentPlayerId)!;
 
-			if (targetPlayer && targetPlayer.lives === 1) {
-				currentState.pendingActions.forEach((action) => {
-					if (action.face === 'cutlass') {
-						engine.selectTarget(action.dieIndex, targetPlayer.id);
-					}
-				});
+			currentState.pendingActions.forEach((action) => {
+				engine.selectTarget(action.dieIndex, targetPlayer.id);
+			});
 
-				engine.finishRolling();
-				const result = engine.resolveTurn();
+			const result = engine.resolveTurn();
 
-				if (result.eliminations.includes(targetPlayer.id)) {
-					expect(result.winner).not.toBeNull();
-				}
-			}
-
-			vi.restoreAllMocks();
+			expect(result.eliminations).toContain(targetPlayer.id);
+			expect(result.winner).toBe(currentPlayerId);
 		});
 	});
 });
