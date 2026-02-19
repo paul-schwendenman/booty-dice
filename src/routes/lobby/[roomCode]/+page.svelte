@@ -169,17 +169,26 @@
 
 <main class="container">
 	<div class="header">
-		<h1>🏴‍☠️ {needsToJoin ? 'Join Game' : 'Crew Assembly'}</h1>
-		<div class="room-code">
-			<span class="label">Room Code:</span>
-			<button class="code" onclick={copyRoomCode} title="Click to copy">
+		<a href="/" class="back-link" aria-label="Back to home">&larr;</a>
+		<h1>{needsToJoin ? 'Join Game' : 'Crew Assembly'}</h1>
+		<div class="room-code-bar">
+			<button class="code" onclick={copyRoomCode} title="Click to copy room code">
 				{roomCode}
 			</button>
+			{#if !needsToJoin}
+				<button class="share-btn" onclick={shareLink} title="Copy invite link">
+					{#if shareButtonText === 'Copied!'}
+						<span class="share-icon">&#10003;</span>
+					{:else}
+						<span class="share-icon">&#128279;</span>
+					{/if}
+					<span class="share-label">{shareButtonText}</span>
+				</button>
+			{/if}
 		</div>
 	</div>
 
 	{#if needsToJoin}
-		<!-- Join form for users visiting via shared link -->
 		<div class="join-section">
 			<p class="join-prompt">You've been invited to join a pirate crew!</p>
 
@@ -203,39 +212,32 @@
 			{#if !isConnected}
 				<p class="hint">Connecting to server...</p>
 			{/if}
-
-			<a href="/" class="back-link">Back to Home</a>
 		</div>
 	{:else}
-		<!-- Share button -->
-		<div class="share-section">
-			<Button onclick={shareLink} variant="secondary">
-				{shareButtonText}
-			</Button>
-		</div>
-
 		<div class="players-section">
-			<h2>Pirates ({lobby.players.length}/12)</h2>
+			<h2>Pirates Aboard <span class="count">{lobby.players.length}/12</span></h2>
 			<div class="players-list">
-				{#each lobby.players as lobbyPlayer (lobbyPlayer.id)}
-					<div class="player-row">
+				{#each lobby.players as lobbyPlayer, i (lobbyPlayer.id)}
+					<div
+						class="player-row"
+						class:is-ready={lobbyPlayer.isReady || lobbyPlayer.isAI}
+						style="animation-delay: {i * 60}ms"
+					>
 						<div class="player-info">
+							<span class="player-avatar">{lobbyPlayer.isAI ? '🤖' : '🏴‍☠️'}</span>
 							<span class="name">{lobbyPlayer.name}</span>
-							{#if lobbyPlayer.isAI}
-								<span class="badge ai">AI</span>
-							{/if}
 							{#if lobbyPlayer.id === player.id}
 								<span class="badge you">You</span>
 							{/if}
 						</div>
 						<div class="player-status">
 							{#if lobbyPlayer.isReady || lobbyPlayer.isAI}
-								<span class="ready">Ready ✓</span>
+								<span class="ready">Ready</span>
 							{:else}
-								<span class="waiting">Waiting...</span>
+								<span class="waiting">Waiting&hellip;</span>
 							{/if}
 							{#if lobby.isHost && lobbyPlayer.isAI}
-								<button class="remove-btn" onclick={() => removeAI(lobbyPlayer.id)}>✕</button>
+								<button class="remove-btn" onclick={() => removeAI(lobbyPlayer.id)} title="Remove AI">✕</button>
 							{/if}
 						</div>
 					</div>
@@ -251,18 +253,20 @@
 			{/if}
 
 			{#if lobby.isHost}
-				<Button onclick={addAI} variant="secondary" disabled={lobby.players.length >= 12}>
-					Add AI Pirate
-				</Button>
+				<div class="host-actions">
+					<Button onclick={addAI} variant="secondary" disabled={lobby.players.length >= 12}>
+						+ AI Pirate
+					</Button>
 
-				<Button onclick={startGame} disabled={!lobby.canStart}>
-					Start Game
-				</Button>
+					<Button onclick={startGame} disabled={!lobby.canStart}>
+						Start Game
+					</Button>
+				</div>
 			{/if}
 		</div>
 
 		{#if !lobby.canStart && lobby.players.length >= 2}
-			<p class="hint">Waiting for all pirates to ready up...</p>
+			<p class="hint">Waiting for all pirates to ready up&hellip;</p>
 		{:else if lobby.players.length < 2}
 			<p class="hint">Need at least 2 pirates to start</p>
 		{/if}
@@ -271,67 +275,122 @@
 
 <style>
 	.container {
-		max-width: 600px;
+		max-width: 520px;
 		margin: 0 auto;
-		padding: 2rem;
+		padding: 1.5rem;
 		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
 	}
 
+	/* --- Header --- */
 	.header {
 		text-align: center;
 		margin-bottom: 2rem;
+		position: relative;
+	}
+
+	.back-link {
+		position: absolute;
+		left: 0;
+		top: 0.25rem;
+		color: #887766;
+		text-decoration: none;
+		font-size: 1.4rem;
+		line-height: 1;
+		transition: color 0.2s;
+	}
+
+	.back-link:hover {
+		color: #d4a574;
 	}
 
 	h1 {
-		font-size: 2rem;
+		font-size: 1.6rem;
 		color: #d4a574;
 		margin-bottom: 1rem;
+		letter-spacing: 0.5px;
 	}
 
-	.room-code {
-		display: flex;
+	/* --- Room code + share bar --- */
+	.room-code-bar {
+		display: inline-flex;
 		align-items: center;
-		justify-content: center;
-		gap: 0.5rem;
-	}
-
-	.label {
-		color: #888;
+		gap: 2px;
+		background: #232323;
+		border: 1px solid #3a3a3a;
+		border-radius: 8px;
+		overflow: hidden;
 	}
 
 	.code {
-		background: #2a2a2a;
-		border: 2px solid #d4a574;
-		border-radius: 6px;
-		padding: 0.5rem 1rem;
-		font-size: 1.5rem;
-		font-weight: bold;
-		letter-spacing: 3px;
+		background: transparent;
+		border: none;
+		padding: 0.5rem 0.9rem;
+		font-size: 1.3rem;
+		font-weight: 700;
+		letter-spacing: 4px;
 		color: #d4a574;
 		cursor: pointer;
-		transition: all 0.2s;
+		transition: background 0.15s;
+		font-family: inherit;
 	}
 
 	.code:hover {
-		background: #3a3a3a;
+		background: #2e2e2e;
 	}
 
+	.share-btn {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+		background: transparent;
+		border: none;
+		border-left: 1px solid #3a3a3a;
+		padding: 0.5rem 0.75rem;
+		color: #887766;
+		cursor: pointer;
+		transition: all 0.15s;
+		font-family: inherit;
+		font-size: 0.8rem;
+	}
+
+	.share-btn:hover {
+		background: #2e2e2e;
+		color: #d4a574;
+	}
+
+	.share-icon {
+		font-size: 0.95rem;
+	}
+
+	.share-label {
+		font-weight: 500;
+	}
+
+	/* --- Players --- */
 	.players-section {
-		margin-bottom: 2rem;
+		margin-bottom: 1.5rem;
+		flex: 1;
 	}
 
 	h2 {
-		font-size: 1rem;
-		color: #888;
+		font-size: 0.8rem;
+		color: #665e55;
 		text-transform: uppercase;
-		letter-spacing: 1px;
-		margin-bottom: 1rem;
+		letter-spacing: 1.5px;
+		margin-bottom: 0.75rem;
+		font-weight: 600;
+	}
+
+	.count {
+		color: #887766;
 	}
 
 	.players-list {
 		display: grid;
 		grid-template-columns: 1fr 1fr;
-		gap: 0.4rem;
+		gap: 0.35rem;
 	}
 
 	@media (max-width: 500px) {
@@ -344,114 +403,157 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 0.6rem 0.75rem;
-		background: #2a2a2a;
+		padding: 0.55rem 0.7rem;
+		background: #222;
 		border-radius: 6px;
+		border-left: 3px solid #333;
+		transition: border-color 0.3s, background 0.2s;
+		animation: slideIn 0.25s ease-out both;
+	}
+
+	.player-row.is-ready {
+		border-left-color: #5a9a5a;
+		background: #1f261f;
+	}
+
+	@keyframes slideIn {
+		from {
+			opacity: 0;
+			transform: translateX(-8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(0);
+		}
 	}
 
 	.player-info {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.4rem;
 		min-width: 0;
+	}
+
+	.player-avatar {
+		font-size: 0.9rem;
+		flex-shrink: 0;
 	}
 
 	.name {
 		font-weight: 600;
-		color: #eee;
+		color: #ddd;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
+		font-size: 0.9rem;
 	}
 
 	.badge {
-		font-size: 0.65rem;
-		padding: 2px 6px;
-		border-radius: 4px;
+		font-size: 0.6rem;
+		padding: 1px 5px;
+		border-radius: 3px;
 		text-transform: uppercase;
-		font-weight: 600;
-	}
-
-	.badge.ai {
-		background: #555;
-		color: #ccc;
+		font-weight: 700;
+		letter-spacing: 0.5px;
 	}
 
 	.badge.you {
-		background: #4a7c4a;
-		color: #fff;
+		background: rgba(90, 154, 90, 0.3);
+		color: #8cbe8c;
+		border: 1px solid rgba(90, 154, 90, 0.3);
 	}
 
 	.player-status {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.4rem;
 		flex-shrink: 0;
 		white-space: nowrap;
 	}
 
 	.ready {
-		color: #7c7;
+		color: #6ab06a;
 		font-weight: 600;
-		font-size: 0.85rem;
+		font-size: 0.78rem;
 	}
 
 	.waiting {
-		color: #888;
-		font-size: 0.85rem;
+		color: #666;
+		font-size: 0.78rem;
 	}
 
 	.remove-btn {
-		background: #c44;
-		border: none;
-		color: white;
-		width: 24px;
-		height: 24px;
+		background: transparent;
+		border: 1px solid #553333;
+		color: #c66;
+		width: 22px;
+		height: 22px;
 		border-radius: 4px;
 		cursor: pointer;
-		font-size: 0.8rem;
+		font-size: 0.7rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.15s;
 	}
 
 	.remove-btn:hover {
-		background: #a33;
+		background: #442222;
+		border-color: #c44;
+		color: #fff;
 	}
 
+	/* --- Actions --- */
 	.actions {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.65rem;
+	}
+
+	.host-actions {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 0.65rem;
+	}
+
+	@media (max-width: 400px) {
+		.host-actions {
+			grid-template-columns: 1fr;
+		}
 	}
 
 	.hint {
 		text-align: center;
-		color: #888;
-		margin-top: 1.5rem;
-		font-size: 0.9rem;
+		color: #665e55;
+		margin-top: 1.25rem;
+		font-size: 0.85rem;
 	}
 
+	/* --- Join form --- */
 	.join-section {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
-		margin-top: 1rem;
+		margin-top: 0.5rem;
 	}
 
 	.join-prompt {
 		text-align: center;
-		color: #ccc;
-		font-size: 1.1rem;
-		margin-bottom: 0.5rem;
+		color: #bbb;
+		font-size: 1.05rem;
 	}
 
 	.input {
 		width: 100%;
-		padding: 1rem;
-		border: 2px solid #333;
+		padding: 0.85rem 1rem;
+		border: 1px solid #333;
 		border-radius: 8px;
-		background: #2a2a2a;
+		background: #222;
 		color: #eee;
 		font-size: 1rem;
 		box-sizing: border-box;
+		transition: border-color 0.2s;
+		font-family: inherit;
 	}
 
 	.input:focus {
@@ -460,30 +562,12 @@
 	}
 
 	.input::placeholder {
-		color: #666;
+		color: #555;
 	}
 
 	.error {
 		color: #e77;
 		text-align: center;
 		font-size: 0.9rem;
-	}
-
-	.share-section {
-		margin-bottom: 1.5rem;
-	}
-
-	.back-link {
-		display: block;
-		text-align: center;
-		color: #888;
-		text-decoration: none;
-		margin-top: 1rem;
-		font-size: 0.9rem;
-	}
-
-	.back-link:hover {
-		color: #d4a574;
-		text-decoration: underline;
 	}
 </style>
